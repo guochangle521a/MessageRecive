@@ -1,0 +1,30 @@
+# ==========================================
+# 留言管理系统 .htaccess
+# ==========================================
+
+# 保护 data/ 目录
+RewriteEngine On
+RewriteRule ^data/ - [F,L]
+
+# 禁止直接访问 .db 文件
+<FilesMatch "\.db$">
+    Require all denied
+</FilesMatch>
+
+# 禁止访问 src/ 和 config/ 目录
+RewriteRule ^src/ - [F,L]
+RewriteRule ^config/ - [F,L]
+RewriteRule ^sql/ - [F,L]
+
+# 禁止目录浏览
+Options -Indexes
+
+# 默认首页
+DirectoryIndex admin/login.html
+
+# PHP 设置
+<IfModule mod_php.c>
+    php_value upload_max_filesize 10M
+    php_value post_max_size 10M
+    php_value max_execution_time 30
+</IfModule>

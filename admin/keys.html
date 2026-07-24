@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Key 管理 - 留言管理系统</title>
+    <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">&#x1F4CB;</div>
+                <div>
+                    <h2>留言管理系统</h2>
+                    <span id="sidebarUserRole"></span>
+                </div>
+            </div>
+            <nav class="sidebar-nav" id="sidebarNav"></nav>
+            <div class="sidebar-footer"><span>&copy; 2026 三奇官网</span></div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="menu-toggle" onclick="toggleSidebar()">&#9776;</button>
+                    <h3>API Key 管理</h3>
+                </div>
+                <div class="topbar-right">
+                    <span class="user-info">
+                        <span class="user-avatar" id="userAvatar">A</span>
+                        <span id="topUsername">admin</span>
+                    </span>
+                    <button class="btn-logout" onclick="doLogout()">退出</button>
+                </div>
+            </header>
+
+            <div class="page-content">
+
+                <!-- New Key -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h4>&#x2795; 新增 API Key</h4>
+                    </div>
+                    <div class="panel-body">
+                        <div class="inline-form">
+                            <div class="form-field">
+                                <label>来源名称 <span style="color:#d93025;">*</span></label>
+                                <input type="text" id="newSourceName" placeholder="如：三奇官网" style="width:260px;">
+                            </div>
+                            <button class="btn btn-primary" onclick="addKey()">&#x2795; 生成 Key</button>
+                        </div>
+                        <p style="font-size:12px;color:#8892a4;margin-top:8px;">
+                            来源名称将直接显示在留言列表的"来源"列中。例如填"三奇官网"，则该Key提交的留言来源显示为"三奇官网"。
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Key List -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h4>&#x1F511; Key 列表</h4>
+                        <span style="font-size:12px;color:#8892a4;">共 <span id="keyCount">0</span> 个</span>
+                    </div>
+                    <div class="panel-body no-padding">
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>API Key</th>
+                                        <th>来源名称</th>
+                                        <th>状态</th>
+                                        <th>创建时间</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="keyTbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Code Guide -->
+                <div class="panel">
+                    <div class="panel-header"><h4>&#x1F4D6; 前端接入代码</h4></div>
+                    <div class="panel-body">
+                        <pre style="background:#1a1a2e;color:#e0e0e0;padding:16px;border-radius:10px;font-size:12px;overflow-x:auto;">fetch('../api/message.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        api_key: 'YOUR_KEY_HERE',
+        name: name,
+        phone: phone,
+        email: email,       // 可选
+        remark: remark      // 可选
+    })
+})
+.then(res => res.json())
+.then(data => {
+    // data.code === 0 表示成功
+});</pre>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <div class="toast-container" id="toastContainer"></div>
+    <script src="assets/app.js"></script>
+</body>
+</html>

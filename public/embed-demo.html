@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>留言提交 - Demo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #f4f6fb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            width: 100%;
+            padding: 20px;
+        }
+        .card {
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        .card-header {
+            background: linear-gradient(135deg, #1a73e8, #0d47a1);
+            color: #fff;
+            padding: 28px 32px;
+        }
+        .card-header h2 { font-size: 20px; font-weight: 700; }
+        .card-header p { font-size: 13px; opacity: 0.85; margin-top: 6px; }
+        .card-body { padding: 32px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 6px;
+        }
+        .form-group label .required { color: #d93025; }
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e5eb;
+            border-radius: 10px;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.25s;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            border-color: #1a73e8;
+            box-shadow: 0 0 0 3px rgba(26,115,232,0.1);
+        }
+        .form-group textarea { min-height: 100px; resize: vertical; }
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #1a73e8, #0d47a1);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            letter-spacing: 0.5px;
+        }
+        .btn-submit:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 25px rgba(26,115,232,0.4);
+        }
+        .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .result {
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            margin-top: 16px;
+            display: none;
+        }
+        .result.success { display: block; background: #e6f4ea; color: #1e8e3e; }
+        .result.error { display: block; background: #fce8e6; color: #d93025; }
+        .code-block {
+            background: #1a1a2e;
+            color: #e0e0e0;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 13px;
+            overflow-x: auto;
+            margin-top: 24px;
+            line-height: 1.8;
+        }
+        .code-block .key { color: #82aaff; }
+        .code-block .str { color: #c3e88d; }
+        .code-block .fn { color: #ffcb6b; }
+        .code-block .cmt { color: #546e7a; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h2>&#x1F4AC; 在线留言</h2>
+                <p>留下您的联系方式，我们将尽快与您联系</p>
+            </div>
+            <div class="card-body">
+                <form id="messageForm">
+                    <div class="form-group">
+                        <label>姓名 <span class="required">*</span></label>
+                        <input type="text" id="name" placeholder="请输入您的姓名" required>
+                    </div>
+                    <div class="form-group">
+                        <label>手机号 <span class="required">*</span></label>
+                        <input type="tel" id="phone" placeholder="请输入您的手机号" required>
+                    </div>
+                    <div class="form-group">
+                        <label>邮箱</label>
+                        <input type="email" id="email" placeholder="请输入您的邮箱（选填）">
+                    </div>
+                    <div class="form-group">
+                        <label>来源</label>
+                        <select id="source">
+                            <option value="官网">官网</option>
+                            <option value="阿里">阿里</option>
+                            <option value="百度推广">百度推广</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>留言内容</label>
+                        <textarea id="remark" placeholder="请输入您想咨询的内容..."></textarea>
+                    </div>
+                    <button type="submit" class="btn-submit" id="submitBtn">提 交 留 言</button>
+                </form>
+                <div class="result" id="result"></div>
+
+                <!-- Code example -->
+                <div class="code-block">
+<span class="cmt">// 各网站前端接入示例（JavaScript fetch）</span>
+<span class="fn">fetch</span>(<span class="str">'../api/message.php'</span>, {
+    method: <span class="str">'POST'</span>,
+    headers: { <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
+    body: <span class="fn">JSON.stringify</span>({
+        <span class="key">api_key</span>: <span class="str">'YOUR_API_KEY_HERE'</span>,
+        <span class="key">name</span>: name,
+        <span class="key">phone</span>: phone,
+        <span class="key">email</span>: email,
+        <span class="key">source</span>: source,
+        <span class="key">remark</span>: remark
+    })
+})
+.<span class="fn">then</span>(res => res.json())
+.<span class="fn">then</span>(data => {
+    <span class="cmt">// data.code === 0 表示提交成功</span>
+});
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('messageForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            var btn = document.getElementById('submitBtn');
+            var result = document.getElementById('result');
+
+            var name = document.getElementById('name').value.trim();
+            var phone = document.getElementById('phone').value.trim();
+            var email = document.getElementById('email').value.trim();
+            var source = document.getElementById('source').value;
+            var remark = document.getElementById('remark').value.trim();
+
+            if (!/^1[3-9]\d{9}$/.test(phone)) {
+                result.className = 'result error';
+                result.textContent = '请输入正确的手机号';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '提交中...';
+            result.className = 'result';
+
+            var apiKey = 'YOUR_API_KEY_HERE';
+            if (apiKey === 'YOUR_API_KEY_HERE') {
+                result.className = 'result error';
+                result.textContent = '请先在示例代码中配置后台生成的 API Key';
+                return;
+            }
+
+            try {
+                var res = await fetch('../api/message.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        api_key: apiKey,
+                        name: name,
+                        phone: phone,
+                        email: email,
+                        source: source,
+                        remark: remark
+                    })
+                });
+                var data = await res.json();
+
+                if (data.code === 0) {
+                    result.className = 'result success';
+                    result.textContent = '留言提交成功！我们会尽快与您联系。';
+                    document.getElementById('messageForm').reset();
+                } else {
+                    result.className = 'result error';
+                    result.textContent = data.msg || '提交失败，请稍后重试';
+                }
+            } catch(err) {
+                result.className = 'result error';
+                result.textContent = '网络错误，请稍后重试';
+            }
+
+            btn.disabled = false;
+            btn.textContent = '提 交 留 言';
+        });
+    </script>
+</body>
+</html>

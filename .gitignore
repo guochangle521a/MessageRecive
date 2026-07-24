@@ -1,0 +1,15 @@
+# Runtime data
+/data/messages.db
+/data/*.db
+/data/*.db-*
+/data/logs/*.log
+
+# Local temporary files
+/_codex_*.php
+/'test'])
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
