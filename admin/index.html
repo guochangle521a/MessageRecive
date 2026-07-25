@@ -43,38 +43,6 @@
 
             <div class="page-content">
 
-                <!-- Stats -->
-                <div class="stats-grid" id="statsGrid">
-                    <div class="stat-card">
-                        <div class="stat-icon blue">&#x1F4E8;</div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="statTotal">0</div>
-                            <div class="stat-label">总留言数</div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon orange">&#x1F4AC;</div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="statNew">0</div>
-                            <div class="stat-label">新留言</div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon blue">&#x1F4DE;</div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="statContacted">0</div>
-                            <div class="stat-label">已联系</div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon green">&#x2705;</div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="statDeal">0</div>
-                            <div class="stat-label">已成交</div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Filter -->
                 <div class="panel">
                     <div class="panel-header">
@@ -91,29 +59,6 @@
                             <input type="date" id="fEndDate" title="结束日期">
                             <button class="btn btn-primary" onclick="applyFilters()">筛选</button>
                             <button class="btn btn-success" onclick="exportCSV()">&#x1F4E5; 导出</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Summary Charts -->
-                <div class="panel">
-                    <div class="panel-header">
-                        <h4>&#x1F4CA; 汇总统计图表 <span class="summary-range" id="summaryRange"></span></h4>
-                    </div>
-                    <div class="panel-body">
-                        <div class="chart-grid">
-                            <section class="chart-section chart-section-wide">
-                                <div class="chart-title">每日留言趋势</div>
-                                <div class="trend-chart" id="dailyTrendChart"></div>
-                            </section>
-                            <section class="chart-section">
-                                <div class="chart-title">来源分类</div>
-                                <div class="bar-list" id="sourceChart"></div>
-                            </section>
-                            <section class="chart-section">
-                                <div class="chart-title">状态分类</div>
-                                <div class="bar-list" id="statusChart"></div>
-                            </section>
                         </div>
                     </div>
                 </div>
@@ -216,6 +161,6 @@
     <!-- ===== Toast ===== -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <script src="assets/app.js?v=20260725-stats"></script>
+    <script src="assets/app.js?v=20260725-stats-menu"></script>
 </body>
 </html>

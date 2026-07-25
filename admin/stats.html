@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>统计分析 - 留言管理系统</title>
+    <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">&#x1F4CB;</div>
+                <div>
+                    <h2>留言管理系统</h2>
+                    <span id="sidebarUserRole"></span>
+                </div>
+            </div>
+            <nav class="sidebar-nav" id="sidebarNav"></nav>
+            <div class="sidebar-footer">
+                <span>&copy; 2026 三奇官网</span>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="menu-toggle" onclick="toggleSidebar()">&#9776;</button>
+                    <h3>统计分析</h3>
+                </div>
+                <div class="topbar-right">
+                    <span class="user-info">
+                        <span class="user-avatar" id="userAvatar">A</span>
+                        <span id="topUsername">admin</span>
+                    </span>
+                    <button class="btn-logout" onclick="doLogout()">退出</button>
+                </div>
+            </header>
+
+            <div class="page-content">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h4>&#x1F50D; 统计筛选</h4>
+                        <button class="btn btn-outline btn-sm" onclick="resetFilter()">重置</button>
+                    </div>
+                    <div class="panel-body">
+                        <div class="filter-bar">
+                            <select id="fSource"><option value="">全部来源</option></select>
+                            <select id="fStatus"><option value="">全部状态</option></select>
+                            <input type="date" id="fStartDate" title="开始日期">
+                            <span style="color:#8892a4;">至</span>
+                            <input type="date" id="fEndDate" title="结束日期">
+                            <button class="btn btn-primary" onclick="applyFilters()">筛选</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-grid" id="statsGrid">
+                    <div class="stat-card">
+                        <div class="stat-icon blue">&#x1F4E8;</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="statTotal">0</div>
+                            <div class="stat-label">总留言数</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon orange">&#x1F4AC;</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="statNew">0</div>
+                            <div class="stat-label">新留言</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon blue">&#x1F4DE;</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="statContacted">0</div>
+                            <div class="stat-label">已联系</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green">&#x2705;</div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="statDeal">0</div>
+                            <div class="stat-label">已成交</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <h4>&#x1F4CA; 汇总统计图表 <span class="summary-range" id="summaryRange"></span></h4>
+                    </div>
+                    <div class="panel-body">
+                        <div class="chart-grid">
+                            <section class="chart-section chart-section-wide">
+                                <div class="chart-title">每日留言趋势</div>
+                                <div class="trend-chart" id="dailyTrendChart"></div>
+                            </section>
+                            <section class="chart-section">
+                                <div class="chart-title">来源分类</div>
+                                <div class="bar-list" id="sourceChart"></div>
+                            </section>
+                            <section class="chart-section">
+                                <div class="chart-title">状态分类</div>
+                                <div class="bar-list" id="statusChart"></div>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+    <script src="assets/app.js?v=20260725-stats-menu"></script>
+</body>
+</html>

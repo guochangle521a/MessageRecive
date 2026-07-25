@@ -83,6 +83,7 @@ function renderLayout() {
     if (!navEl) return;
     var html = '<div class="nav-section">主菜单</div>';
     html += '<a href="index.html" class="' + (isPage('index') ? 'active' : '') + '"><span class="nav-icon">&#x1F4E9;</span> 留言列表</a>';
+    html += '<a href="stats.html" class="' + (isPage('stats') ? 'active' : '') + '"><span class="nav-icon">&#x1F4CA;</span> 统计分析</a>';
     if (userInfo.role === 'admin') {
         html += '<a href="keys.html" class="' + (isPage('keys') ? 'active' : '') + '"><span class="nav-icon">&#x1F511;</span> API Key 管理</a>';
         html += '<a href="users.html" class="' + (isPage('users') ? 'active' : '') + '"><span class="nav-icon">&#x1F465;</span> 用户管理</a>';
@@ -129,6 +130,13 @@ if (isPage('index')) {
         await loadStatusDict();
         await loadSources();
         await loadMessages(1);
+    });
+}
+
+if (isPage('stats')) {
+    document.addEventListener('DOMContentLoaded', async function() {
+        await loadStatusDict();
+        await loadSources();
         await loadStats();
     });
 }
@@ -206,8 +214,8 @@ function buildFilterParams(includeKeyword) {
 }
 
 function applyFilters() {
-    loadMessages(1);
-    loadStats();
+    if (isPage('index')) loadMessages(1);
+    if (isPage('stats')) loadStats();
 }
 
 async function loadMessages(page) {
@@ -284,13 +292,17 @@ function updateSelection() {
 }
 
 function resetFilter() {
-    document.getElementById('fKeyword').value = '';
-    document.getElementById('fSource').value = '';
-    document.getElementById('fStatus').value = '';
-    document.getElementById('fStartDate').value = '';
-    document.getElementById('fEndDate').value = '';
-    loadMessages(1);
-    loadStats();
+    var keywordEl = document.getElementById('fKeyword');
+    var sourceEl = document.getElementById('fSource');
+    var statusEl = document.getElementById('fStatus');
+    var startEl = document.getElementById('fStartDate');
+    var endEl = document.getElementById('fEndDate');
+    if (keywordEl) keywordEl.value = '';
+    if (sourceEl) sourceEl.value = '';
+    if (statusEl) statusEl.value = '';
+    if (startEl) startEl.value = '';
+    if (endEl) endEl.value = '';
+    applyFilters();
 }
 
 // ========== Stats ==========
