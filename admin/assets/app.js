@@ -173,25 +173,50 @@ async function loadSources() {
     } catch(e) {}
 }
 
+function getCurrentFilters() {
+    var filters = {
+        keyword: '',
+        source: '',
+        status: '',
+        date_from: '',
+        date_to: ''
+    };
+    var kwEl = document.getElementById('fKeyword');
+    var srcEl = document.getElementById('fSource');
+    var stEl = document.getElementById('fStatus');
+    var sdEl = document.getElementById('fStartDate');
+    var edEl = document.getElementById('fEndDate');
+    if (kwEl) filters.keyword = kwEl.value.trim();
+    if (srcEl) filters.source = srcEl.value;
+    if (stEl) filters.status = stEl.value;
+    if (sdEl) filters.date_from = sdEl.value;
+    if (edEl) filters.date_to = edEl.value;
+    return filters;
+}
+
+function buildFilterParams(includeKeyword) {
+    var filters = getCurrentFilters();
+    var params = new URLSearchParams();
+    if (includeKeyword && filters.keyword) params.set('keyword', filters.keyword);
+    if (filters.source) params.set('source', filters.source);
+    if (filters.status !== '') params.set('status', filters.status);
+    if (filters.date_from) params.set('date_from', filters.date_from);
+    if (filters.date_to) params.set('date_to', filters.date_to);
+    return params;
+}
+
+function applyFilters() {
+    loadMessages(1);
+    loadStats();
+}
+
 async function loadMessages(page) {
     page = page || currentPage;
     currentPage = page;
 
-    var params = new URLSearchParams();
+    var params = buildFilterParams(true);
     params.set('page', page);
     params.set('page_size', pageSize);
-
-    var kw = document.getElementById('fKeyword').value.trim();
-    var src = document.getElementById('fSource').value;
-    var st = document.getElementById('fStatus').value;
-    var sd = document.getElementById('fStartDate').value;
-    var ed = document.getElementById('fEndDate').value;
-
-    if (kw) params.set('keyword', kw);
-    if (src) params.set('source', src);
-    if (st !== '') params.set('status', st);
-    if (sd) params.set('date_from', sd);
-    if (ed) params.set('date_to', ed);
 
     try {
         var res = await apiFetch(API_BASE + 'messages.php?' + params.toString());
@@ -265,30 +290,78 @@ function resetFilter() {
     document.getElementById('fStartDate').value = '';
     document.getElementById('fEndDate').value = '';
     loadMessages(1);
+    loadStats();
 }
 
 // ========== Stats ==========
 async function loadStats() {
     try {
-        // 获取全部留言统计
-        var res = await apiFetch(API_BASE + 'messages.php?page=1&page_size=1');
+        var params = buildFilterParams(false);
+        var res = await apiFetch(API_BASE + 'stats.php?' + params.toString());
         var data = await res.json();
-        if (data.code === 0 && data.data.total > 0) {
-            // 简化：用 status 筛选统计
-            var counts = {};
-            [0,1,2,3].forEach(async function(st) {
-                var r2 = await apiFetch(API_BASE + 'messages.php?page=1&page_size=1&status=' + st);
-                var d2 = await r2.json();
-                if (d2.code === 0) {
-                    var elMap = {0: 'statNew', 1: 'statContacted', 2: 'statDeal', 3: 'statInvalid'};
-                    var el = document.getElementById(elMap[st]);
-                    if (el) el.textContent = d2.data.total;
-                }
-            });
-
-            document.getElementById('statTotal').textContent = data.data.total;
+        if (data.code === 0) {
+            renderSummaryStats(data.data);
         }
     } catch(e) {}
+}
+
+function renderSummaryStats(summary) {
+    var totals = summary.totals || {};
+    setText('statTotal', totals.total || 0);
+    setText('statNew', totals.new_count || 0);
+    setText('statContacted', totals.contacted_count || 0);
+    setText('statDeal', totals.deal_count || 0);
+    var range = summary.range || {};
+    setText('summaryRange', range.date_from && range.date_to ? range.date_from + ' 至 ' + range.date_to : '');
+    renderDailyTrend(summary.daily || []);
+    renderBarList('sourceChart', summary.by_source || [], '#1a73e8');
+    renderBarList('statusChart', summary.by_status || [], '#1e8e3e');
+}
+
+function setText(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = value;
+}
+
+function renderDailyTrend(items) {
+    var el = document.getElementById('dailyTrendChart');
+    if (!el) return;
+    if (!items.length) {
+        el.innerHTML = '<div class="chart-empty">暂无统计数据</div>';
+        return;
+    }
+    var max = Math.max.apply(null, items.map(function(item) { return item.count || 0; })) || 1;
+    var html = '';
+    items.forEach(function(item) {
+        var height = Math.max(3, Math.round((item.count || 0) / max * 100));
+        var label = (item.day || '').slice(5);
+        html += '<div class="trend-item" title="' + esc(item.day) + '：' + (item.count || 0) + ' 条">'
+            + '<div class="trend-value">' + (item.count || 0) + '</div>'
+            + '<div class="trend-bar-wrap"><div class="trend-bar" style="height:' + height + '%;"></div></div>'
+            + '<div class="trend-label">' + esc(label) + '</div>'
+            + '</div>';
+    });
+    el.innerHTML = html;
+}
+
+function renderBarList(id, items, fallbackColor) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (!items.length) {
+        el.innerHTML = '<div class="chart-empty">暂无统计数据</div>';
+        return;
+    }
+    var max = Math.max.apply(null, items.map(function(item) { return item.count || 0; })) || 1;
+    var html = '';
+    items.forEach(function(item) {
+        var color = item.color || fallbackColor;
+        var percent = Math.max(2, Math.round((item.count || 0) / max * 100));
+        html += '<div class="bar-row">'
+            + '<div class="bar-row-head"><span>' + esc(item.name || '未命名') + '</span><strong>' + (item.count || 0) + '</strong></div>'
+            + '<div class="bar-track"><div class="bar-fill" style="width:' + percent + '%;background:' + esc(color) + ';"></div></div>'
+            + '</div>';
+    });
+    el.innerHTML = html;
 }
 
 // ========== Detail Modal ==========

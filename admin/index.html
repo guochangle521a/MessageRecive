@@ -89,8 +89,31 @@
                             <input type="date" id="fStartDate" title="开始日期">
                             <span style="color:#8892a4;">至</span>
                             <input type="date" id="fEndDate" title="结束日期">
-                            <button class="btn btn-primary" onclick="loadMessages(1)">筛选</button>
+                            <button class="btn btn-primary" onclick="applyFilters()">筛选</button>
                             <button class="btn btn-success" onclick="exportCSV()">&#x1F4E5; 导出</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary Charts -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h4>&#x1F4CA; 汇总统计图表 <span class="summary-range" id="summaryRange"></span></h4>
+                    </div>
+                    <div class="panel-body">
+                        <div class="chart-grid">
+                            <section class="chart-section chart-section-wide">
+                                <div class="chart-title">每日留言趋势</div>
+                                <div class="trend-chart" id="dailyTrendChart"></div>
+                            </section>
+                            <section class="chart-section">
+                                <div class="chart-title">来源分类</div>
+                                <div class="bar-list" id="sourceChart"></div>
+                            </section>
+                            <section class="chart-section">
+                                <div class="chart-title">状态分类</div>
+                                <div class="bar-list" id="statusChart"></div>
+                            </section>
                         </div>
                     </div>
                 </div>
@@ -193,6 +216,6 @@
     <!-- ===== Toast ===== -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <script src="assets/app.js"></script>
+    <script src="assets/app.js?v=20260725-stats"></script>
 </body>
 </html>
