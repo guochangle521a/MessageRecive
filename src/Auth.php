@@ -70,6 +70,7 @@ class Auth {
                 'username'  => $user['username'],
                 'role'      => $user['role'],
                 'real_name' => $user['real_name']
+                ,'can_view_china' => intval($user['can_view_china'] ?? 0)
             ]
         ];
     }
@@ -104,7 +105,7 @@ class Auth {
             $token = trim($m[1]);
             $db = Database::getInstance();
             $session = $db->queryOne(
-                "SELECT s.*, u.id as uid, u.username, u.role, u.real_name, u.is_active
+                "SELECT s.*, u.id as uid, u.username, u.role, u.real_name, u.is_active, u.can_view_china
                  FROM sessions s
                  JOIN users u ON u.id = s.user_id
                  WHERE s.token = :t AND s.expires_at > datetime('now','localtime')",
@@ -116,6 +117,7 @@ class Auth {
                     'username'  => $session['username'],
                     'role'      => $session['role'],
                     'real_name' => $session['real_name']
+                    ,'can_view_china' => intval($session['can_view_china'] ?? 0)
                 ];
             }
         }
@@ -168,6 +170,11 @@ class Auth {
             [':uid' => $user['id']]
         );
         return array_column($rows, 'source');
+    }
+
+    public static function canViewChina($user)
+    {
+        return $user['role'] === 'admin' || !empty($user['can_view_china']);
     }
 
     /**

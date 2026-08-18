@@ -85,7 +85,7 @@ echo '<div class="row"><span class="label">API 自检</span>';
 if (empty($keys)) {
     echo '<span class="val">未创建 API Key，跳过自检</span></div>';
 } else {
-    $ch = curl_init((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . dirname($_SERVER['SCRIPT_NAME']) . '/api/message.php');
+    $ch = curl_init((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . dirname($_SERVER['SCRIPT_NAME']) . '/api/business-inquiry.php');
     curl_setopt_array($ch, [
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => json_encode(['api_key' => $keys[0]['api_key'], 'name' => 'Check', 'phone' => '13800000000']),
@@ -116,7 +116,7 @@ echo '<div style="margin-top:24px;padding:16px;background:#f8fafc;border-radius:
 echo '<strong style="font-size:14px;">&#x1F4A1; 使用提示：</strong><br><br>';
 echo '1. 登录地址: <code>' . dirname($_SERVER['SCRIPT_NAME']) . '/admin/login.html</code><br>';
 echo '2. 管理员账号: <code>admin</code>（请使用部署时设置的强密码，并在首次登录后修改）<br>';
-echo '3. API 地址: <code>' . dirname($_SERVER['SCRIPT_NAME']) . '/api/message.php</code><br>';
+echo '3. API 地址示例: <code>' . dirname($_SERVER['SCRIPT_NAME']) . '/api/business-inquiry.php</code><br>';
 echo '</div>';
 
 echo '</div></body></html>';

@@ -65,9 +65,13 @@
                             </div>
                             <button class="btn btn-primary" onclick="addUser()">&#x2795; 创建用户</button>
                         </div>
-                        <div style="margin-top:12px;">
-                            <label style="font-size:12px;color:#8892a4;font-weight:600;display:block;margin-bottom:6px;">可见来源（仅对普通用户生效，管理员可看全部）</label>
+                        <div style="margin-top:16px;padding:14px;border:1px solid #dce6f5;border-radius:10px;background:#f8fbff;">
+                            <label style="font-size:13px;color:#1a73e8;font-weight:600;display:block;margin-bottom:8px;">海外独立站权限</label>
                             <div id="newUserSources" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+                        </div>
+                        <div style="margin-top:10px;padding:14px;border:1px solid #f3d7b4;border-radius:10px;background:#fffaf3;">
+                            <label style="font-size:13px;color:#e8710a;font-weight:600;display:block;margin-bottom:8px;">国内官网权限</label>
+                            <label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="newCanViewChina"> 允许查看、处理和导出国内官网留言</label>
                         </div>
                     </div>
                 </div>
@@ -87,7 +91,8 @@
                                         <th>用户名</th>
                                         <th>真实姓名</th>
                                         <th>角色</th>
-                                        <th>可见来源</th>
+                                        <th>海外来源权限</th>
+                                        <th>国内官网权限</th>
                                         <th>状态</th>
                                         <th>创建时间</th>
                                         <th>操作</th>
@@ -131,9 +136,10 @@
                         </select>
                     </div>
                     <div class="detail-item full">
-                        <div class="detail-label">可见来源</div>
+                        <div class="detail-label">海外独立站来源权限</div>
                         <div id="euSources" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;"></div>
                     </div>
+                    <div class="detail-item full" style="padding:10px;background:#fffaf3;border-radius:8px;"><div class="detail-label">国内官网权限</div><label style="display:flex;align-items:center;gap:6px;font-size:13px;"><input type="checkbox" id="euCanViewChina"> 允许查看、处理和导出国内官网留言</label></div>
                     <div class="detail-item">
                         <div class="detail-label">状态</div>
                         <select id="euActive" style="width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;">
@@ -151,6 +157,6 @@
     </div>
 
     <div class="toast-container" id="toastContainer"></div>
-    <script src="assets/app.js?v=20260724-users-fix"></script>
+    <script src="assets/app.js?v=20260818-key-permission-split"></script>
 </body>
 </html>

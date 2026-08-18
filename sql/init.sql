@@ -9,7 +9,12 @@ CREATE TABLE IF NOT EXISTS messages (
     name            TEXT    NOT NULL,
     phone           TEXT    NOT NULL,
     email           TEXT    DEFAULT NULL,
+    type            TEXT    NOT NULL DEFAULT '',
+    company         TEXT    DEFAULT NULL,
+    country         TEXT    DEFAULT NULL,
     remark          TEXT    DEFAULT NULL,
+    source_url      TEXT    DEFAULT NULL,
+    extra_data      TEXT    DEFAULT NULL,
     source          TEXT    NOT NULL,             -- 来源名称 = api_keys.site_name
     api_key         TEXT    NOT NULL,
     ip_address      TEXT    DEFAULT NULL,
@@ -28,6 +33,32 @@ CREATE INDEX IF NOT EXISTS idx_status     ON messages(status);
 CREATE INDEX IF NOT EXISTS idx_created_at ON messages(created_at);
 CREATE INDEX IF NOT EXISTS idx_handler    ON messages(handler);
 
+-- 三奇国内官网留言（与海外独立站完全分表）
+CREATE TABLE IF NOT EXISTS china_website_messages (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    inquiry_type      TEXT DEFAULT NULL,
+    region            TEXT DEFAULT NULL,
+    name              TEXT DEFAULT NULL,
+    company           TEXT DEFAULT NULL,
+    phone             TEXT DEFAULT NULL,
+    email             TEXT DEFAULT NULL,
+    remark            TEXT DEFAULT NULL,
+    preferred_contact TEXT DEFAULT NULL,
+    source_url        TEXT DEFAULT NULL,
+    source            TEXT NOT NULL,
+    api_key           TEXT NOT NULL,
+    ip_address        TEXT DEFAULT NULL,
+    user_agent        TEXT DEFAULT NULL,
+    status            INTEGER DEFAULT 0,
+    handle_record     TEXT DEFAULT NULL,
+    handler           TEXT DEFAULT NULL,
+    created_at        TEXT DEFAULT (datetime('now','localtime')),
+    handled_at        TEXT DEFAULT NULL,
+    handled_by        TEXT DEFAULT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_china_status ON china_website_messages(status);
+CREATE INDEX IF NOT EXISTS idx_china_created ON china_website_messages(created_at);
+
 -- 频率限制表（防刷）
 CREATE TABLE IF NOT EXISTS rate_limits (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,6 +75,7 @@ CREATE TABLE IF NOT EXISTS api_keys (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     api_key     TEXT    UNIQUE NOT NULL,
     site_name   TEXT    NOT NULL,             -- 来源名称，留言列表中显示为source
+    site_scope  TEXT    DEFAULT 'overseas',   -- overseas / china
     is_active   INTEGER DEFAULT 1,
     created_at  TEXT    DEFAULT (datetime('now','localtime'))
 );
@@ -71,6 +103,7 @@ CREATE TABLE IF NOT EXISTS users (
     password    TEXT    NOT NULL,             -- password_hash
     role        TEXT    DEFAULT 'user',       -- 'admin' / 'user'
     real_name   TEXT    DEFAULT NULL,         -- 真实姓名
+    can_view_china INTEGER DEFAULT 0,          -- 国内官网留言权限
     is_active   INTEGER DEFAULT 1,
     created_at  TEXT    DEFAULT (datetime('now','localtime'))
 );

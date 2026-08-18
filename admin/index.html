@@ -30,7 +30,7 @@
             <header class="topbar">
                 <div class="topbar-left">
                     <button class="menu-toggle" onclick="toggleSidebar()">&#9776;</button>
-                    <h3>留言列表</h3>
+                    <h3>海外独立站留言</h3>
                 </div>
                 <div class="topbar-right">
                     <span class="user-info">
@@ -52,6 +52,7 @@
                     <div class="panel-body">
                         <div class="filter-bar">
                             <input type="text" id="fKeyword" placeholder="姓名/手机号/内容...">
+                            <select id="fType"><option value="">全部业务</option></select>
                             <select id="fSource"><option value="">全部来源</option></select>
                             <select id="fStatus"><option value="">全部状态</option></select>
                             <input type="date" id="fStartDate" title="开始日期">
@@ -78,6 +79,7 @@
                                         <th>ID</th>
                                         <th>客户姓名</th>
                                         <th>手机号</th>
+                                        <th>业务类型</th>
                                         <th>来源</th>
                                         <th>状态</th>
                                         <th>处理人</th>
@@ -112,7 +114,12 @@
                     <div class="detail-item"><div class="detail-label">客户姓名</div><div class="detail-value" id="dName">-</div></div>
                     <div class="detail-item"><div class="detail-label">手机号</div><div class="detail-value" id="dPhone">-</div></div>
                     <div class="detail-item"><div class="detail-label">邮箱</div><div class="detail-value" id="dEmail">-</div></div>
+                    <div class="detail-item"><div class="detail-label">业务类型</div><div class="detail-value" id="dType">-</div></div>
+                    <div class="detail-item"><div class="detail-label">公司/组织</div><div class="detail-value" id="dCompany">-</div></div>
+                    <div class="detail-item"><div class="detail-label">国家/地区</div><div class="detail-value" id="dCountry">-</div></div>
                     <div class="detail-item"><div class="detail-label">来源</div><div class="detail-value" id="dSource">-</div></div>
+                    <div class="detail-item full"><div class="detail-label">提交页面</div><div class="detail-value" id="dSourceUrl">-</div></div>
+                    <div class="detail-item full"><div class="detail-label">业务扩展信息</div><div class="detail-value" id="dExtra" style="background:#f8fafc;padding:12px;border-radius:8px;white-space:pre-wrap;">-</div></div>
                     <div class="detail-item full">
                         <div class="detail-label">留言内容</div>
                         <div class="detail-value" id="dRemark" style="background:#f8fafc;padding:12px;border-radius:8px;">-</div>
@@ -161,6 +168,6 @@
     <!-- ===== Toast ===== -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <script src="assets/app.js?v=20260725-stats-menu"></script>
+    <script src="assets/app.js?v=20260818-china-separate"></script>
 </body>
 </html>

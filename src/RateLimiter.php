@@ -46,13 +46,14 @@ class RateLimiter {
     /**
      * 检查重复提交（同IP + 同手机号 60秒内）
      */
-    public static function checkDuplicate($ip, $phone) {
+    public static function checkDuplicate($ip, $phone, $table = 'messages') {
         $db = Database::getInstance();
+        if (!in_array($table, ['messages', 'china_website_messages'], true)) $table = 'messages';
         $window = DUPLICATE_WINDOW;
         $expireTime = date('Y-m-d H:i:s', time() - $window);
 
         $row = $db->queryOne(
-            'SELECT COUNT(*) as cnt FROM messages
+            'SELECT COUNT(*) as cnt FROM ' . $table . '
              WHERE ip_address = :ip AND phone = :ph AND created_at >= :et',
             [':ip' => $ip, ':ph' => $phone, ':et' => $expireTime]
         );

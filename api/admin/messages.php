@@ -48,6 +48,7 @@ if ($method === 'GET') {
     $pageSize = max(1, min(100, intval($_GET['page_size'] ?? 20)));
     $keyword  = trim($_GET['keyword'] ?? '');
     $source   = trim($_GET['source'] ?? '');
+    $type     = trim($_GET['type'] ?? '');
     $status   = $_GET['status'] ?? '';
     $handler  = trim($_GET['handler'] ?? '');
     $dateFrom = $_GET['date_from'] ?? '';
@@ -62,17 +63,20 @@ if ($method === 'GET') {
     $params = [];
 
     if ($keyword !== '') {
-        $where[] = '(m.name LIKE :kw OR m.phone LIKE :kw2 OR m.email LIKE :kw3 OR m.remark LIKE :kw4 OR m.handler LIKE :kw5)';
+        $where[] = '(m.name LIKE :kw OR m.phone LIKE :kw2 OR m.email LIKE :kw3 OR m.company LIKE :kw4 OR m.remark LIKE :kw5 OR m.extra_data LIKE :kw6 OR m.handler LIKE :kw7)';
         $kw = '%' . $keyword . '%';
         $params[':kw'] = $kw;
         $params[':kw2'] = $kw;
         $params[':kw3'] = $kw;
-        $params[':kw4'] = $kw;
-        $params[':kw5'] = $kw;
+        $params[':kw4'] = $kw; $params[':kw5'] = $kw; $params[':kw6'] = $kw; $params[':kw7'] = $kw;
     }
     if ($source !== '') {
         $where[] = 'm.source = :src';
         $params[':src'] = $source;
+    }
+    if ($type !== '') {
+        $where[] = 'm.type = :type';
+        $params[':type'] = $type;
     }
     if ($status !== '') {
         $where[] = 'm.status = :st';
@@ -228,7 +232,6 @@ if ($method === 'POST') {
         $params[$key] = $idValue;
         $scopeParams[$key] = $idValue;
     }
-
     $allowedSources = Auth::getUserSources($user);
     if ($allowedSources !== null) {
         if (empty($allowedSources)) {

@@ -18,9 +18,9 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 // --- GET: 用户列表 ---
 if ($method === 'GET') {
-    $users = $db->query('SELECT id, username, role, real_name, is_active, created_at FROM users ORDER BY id');
+    $users = $db->query('SELECT id, username, role, real_name, can_view_china, is_active, created_at FROM users ORDER BY id');
     $allSources = array_column(
-        $db->query('SELECT site_name FROM api_keys ORDER BY created_at DESC'),
+        $db->query("SELECT site_name FROM api_keys WHERE COALESCE(site_scope,'overseas')='overseas' ORDER BY created_at DESC"),
         'site_name'
     );
     // 附带每个用户的来源权限
@@ -43,6 +43,7 @@ if ($method === 'POST') {
     $realName  = trim($input['real_name'] ?? '');
     $role      = in_array($input['role'] ?? '', ['admin', 'user']) ? $input['role'] : 'user';
     $sources   = $input['sources'] ?? [];
+    $canViewChina = !empty($input['can_view_china']) ? 1 : 0;
 
     if ($username === '' || $password === '') {
         Response::error(400, '用户名和密码不能为空');
@@ -50,8 +51,8 @@ if ($method === 'POST') {
     if (strlen($password) < 6) {
         Response::error(400, '密码至少6位');
     }
-    if ($role === 'user' && empty(array_filter($sources, function($src) { return trim($src) !== ''; }))) {
-        Response::error(400, '普通用户必须至少选择一个可见来源');
+    if ($role === 'user' && !$canViewChina && empty(array_filter($sources, function($src) { return trim($src) !== ''; }))) {
+        Response::error(400, '普通用户必须至少选择海外来源或国内官网权限');
     }
 
     // 检查重名
@@ -61,11 +62,12 @@ if ($method === 'POST') {
     }
 
     $hashedPwd = password_hash($password, PASSWORD_BCRYPT);
-    $db->execute('INSERT INTO users (username, password, role, real_name) VALUES (:u, :p, :r, :n)', [
+    $db->execute('INSERT INTO users (username, password, role, real_name, can_view_china) VALUES (:u, :p, :r, :n, :c)', [
         ':u' => $username,
         ':p' => $hashedPwd,
         ':r' => $role,
-        ':n' => $realName
+        ':n' => $realName,
+        ':c' => $canViewChina
     ]);
 
     $newUserId = $db->lastInsertId();
@@ -92,6 +94,7 @@ if ($method === 'PUT') {
     $isActive = isset($input['is_active']) ? intval($input['is_active']) : 1;
     $password = $input['password'] ?? '';
     $sources  = $input['sources'] ?? [];
+    $canViewChina = !empty($input['can_view_china']) ? 1 : 0;
 
     if ($editId <= 0) {
         Response::error(400, '缺少用户ID');
@@ -101,15 +104,16 @@ if ($method === 'PUT') {
     if (!$editUser) {
         Response::error(404, '用户不存在', 404);
     }
-    if ($role === 'user' && empty(array_filter($sources, function($src) { return trim($src) !== ''; }))) {
-        Response::error(400, '普通用户必须至少选择一个可见来源');
+    if ($role === 'user' && !$canViewChina && empty(array_filter($sources, function($src) { return trim($src) !== ''; }))) {
+        Response::error(400, '普通用户必须至少选择海外来源或国内官网权限');
     }
 
-    $updates = 'real_name = :n, role = :r, is_active = :a';
+    $updates = 'real_name = :n, role = :r, is_active = :a, can_view_china = :c';
     $params = [
         ':n' => $realName,
         ':r' => $role,
         ':a' => $isActive,
+        ':c' => $canViewChina,
         ':id' => $editId
     ];
 
