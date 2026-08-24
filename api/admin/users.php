@@ -18,7 +18,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 // --- GET: 用户列表 ---
 if ($method === 'GET') {
-    $users = $db->query('SELECT id, username, role, real_name, can_view_china, is_active, created_at FROM users ORDER BY id');
+    $users = $db->query('SELECT u.id,u.username,u.role,u.role_id,r.name role_name,u.real_name,u.can_view_china,u.is_active,u.created_at FROM users u LEFT JOIN roles r ON r.id=u.role_id ORDER BY u.id');
     $allSources = array_column(
         $db->query("SELECT site_name FROM api_keys WHERE COALESCE(site_scope,'overseas')='overseas' ORDER BY created_at DESC"),
         'site_name'
@@ -28,6 +28,8 @@ if ($method === 'GET') {
         $sources = $db->query('SELECT source FROM user_sources WHERE user_id = :uid', [':uid' => $u['id']]);
         $u['sources'] = array_column($sources, 'source');
         $u['all_sources'] = $allSources;
+        $u['site_ids'] = array_map('intval', array_column($db->query('SELECT site_id FROM user_sites WHERE user_id=:uid', [':uid'=>$u['id']]), 'site_id'));
+        $u['all_sites'] = $db->query('SELECT id,name,domain,category FROM sites WHERE is_active=1 ORDER BY id');
     }
     Response::success([
         'list' => $users,
@@ -75,12 +77,14 @@ if ($method === 'POST') {
     // 保存来源权限
     foreach ($sources as $src) {
         if (trim($src) !== '') {
-            $db->execute('INSERT OR IGNORE INTO user_sources (user_id, source) VALUES (:uid, :s)', [
+            $db->execute('INSERT IGNORE INTO user_sources (user_id, source) VALUES (:uid, :s)', [
                 ':uid' => $newUserId,
                 ':s' => trim($src)
             ]);
         }
     }
+    if ($canViewChina) $db->execute('INSERT IGNORE INTO user_sites(user_id,site_id) VALUES(:u,2)', [':u'=>$newUserId]);
+    if (!empty($sources)) $db->execute('INSERT IGNORE INTO user_sites(user_id,site_id) VALUES(:u,1)', [':u'=>$newUserId]);
 
     Response::success(['id' => $newUserId], '用户创建成功');
 }
@@ -129,14 +133,17 @@ if ($method === 'PUT') {
 
     // 更新来源权限（先删后增）
     $db->execute('DELETE FROM user_sources WHERE user_id = :uid', [':uid' => $editId]);
+    $db->execute('DELETE FROM user_sites WHERE user_id = :uid', [':uid' => $editId]);
     foreach ($sources as $src) {
         if (trim($src) !== '') {
-            $db->execute('INSERT OR IGNORE INTO user_sources (user_id, source) VALUES (:uid, :s)', [
+            $db->execute('INSERT IGNORE INTO user_sources (user_id, source) VALUES (:uid, :s)', [
                 ':uid' => $editId,
                 ':s' => trim($src)
             ]);
         }
     }
+    if ($canViewChina) $db->execute('INSERT IGNORE INTO user_sites(user_id,site_id) VALUES(:u,2)', [':u'=>$editId]);
+    if (!empty($sources)) $db->execute('INSERT IGNORE INTO user_sites(user_id,site_id) VALUES(:u,1)', [':u'=>$editId]);
 
     Response::success(null, '用户更新成功');
 }

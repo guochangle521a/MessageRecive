@@ -3,6 +3,7 @@
 // ==========================================
 
 var API_BASE = '../api/admin/';
+var PUBLIC_SERVICE_ORIGIN = 'https://message.sanqifz.com:38038';
 var userInfo = null;
 var currentPage = 1, pageSize = 20;
 var selectedIds = [];
@@ -86,16 +87,26 @@ function renderLayout() {
     // Sidebar nav
     var navEl = document.getElementById('sidebarNav');
     if (!navEl) return;
-    var html = '<div class="nav-section">主菜单</div>';
+    var html = '<div class="nav-section">工作台</div>';
+    html += '<a href="analytics.html" class="' + (isPage('analytics') ? 'active' : '') + '"><span class="nav-icon">&#x1F4CA;</span> 集团与网站概览</a>';
+    html += '<div class="nav-section">网站数据中心</div>';
+    html += '<a href="analytics-detail.html" class="' + (isPage('analytics-detail') ? 'active' : '') + '"><span class="nav-icon">&#x1F50E;</span> 访问与会话明细</a>';
+    html += '<div class="nav-section">询盘中心</div>';
     html += '<a href="index.html" class="' + (isPage('index') ? 'active' : '') + '"><span class="nav-icon">&#x1F30D;</span> 海外独立站留言</a>';
     if (userInfo.role === 'admin' || Number(userInfo.can_view_china) === 1) {
         html += '<a href="china.html" class="' + (isPage('china') ? 'active' : '') + '"><span class="nav-icon">&#x1F1E8;&#x1F1F3;</span> 国内官网留言</a>';
     }
-    html += '<a href="stats.html" class="' + (isPage('stats') ? 'active' : '') + '"><span class="nav-icon">&#x1F4CA;</span> 统计分析</a>';
+    html += '<a href="stats.html" class="' + (isPage('stats') ? 'active' : '') + '"><span class="nav-icon">&#x1F4C8;</span> 询盘统计</a>';
     if (userInfo.role === 'admin') {
-        html += '<a href="keys.html" class="' + (isPage('keys') ? 'active' : '') + '"><span class="nav-icon">&#x1F511;</span> API Key 管理</a>';
-        html += '<a href="users.html" class="' + (isPage('users') ? 'active' : '') + '"><span class="nav-icon">&#x1F465;</span> 用户管理</a>';
-        html += '<div class="nav-section" style="margin-top:16px;">系统设置</div>';
+        html += '<div class="nav-section">组织与站点</div>';
+        html += '<a href="sites.html" class="' + (isPage('sites') ? 'active' : '') + '"><span class="nav-icon">&#x1F310;</span> 网站管理</a>';
+        html += '<div class="nav-section">接口与集成</div>';
+        html += '<a href="keys.html" class="' + (isPage('keys') ? 'active' : '') + '"><span class="nav-icon">&#x1F511;</span> 表单 API Key</a>';
+        html += '<a href="clients.html" class="' + (isPage('clients') ? 'active' : '') + '"><span class="nav-icon">&#x1F6E1;</span> 第三方 API 客户端</a>';
+        html += '<div class="nav-section">数据运维</div>';
+        html += '<a href="operations.html" class="' + (isPage('operations') ? 'active' : '') + '"><span class="nav-icon">&#x1F6E0;</span> 数据质量与任务</a>';
+        html += '<div class="nav-section">系统管理</div>';
+        html += '<a href="users.html" class="' + (isPage('users') ? 'active' : '') + '"><span class="nav-icon">&#x1F465;</span> 用户与网站权限</a>';
         html += '<a href="#" onclick="event.preventDefault();openStatusDict();" class="' + (isPage('index') ? '' : '') + '"><span class="nav-icon">&#x2699;</span> 状态字典维护</a>';
     }
     navEl.innerHTML = html;
@@ -154,6 +165,75 @@ if (isPage('stats')) {
         await loadStats();
     });
 }
+if (isPage('analytics')) document.addEventListener('DOMContentLoaded', loadAnalyticsDashboard);
+if (isPage('sites')) document.addEventListener('DOMContentLoaded', loadSiteManagement);
+if (isPage('clients')) document.addEventListener('DOMContentLoaded', function(){ loadApiClients(); initIntegrationDebug(); });
+if (isPage('operations')) document.addEventListener('DOMContentLoaded', loadOperations);
+if (isPage('analytics-detail')) document.addEventListener('DOMContentLoaded', initAnalyticsDetail);
+
+async function loadAnalyticsDashboard() {
+    var sitesRes=await apiFetch(API_BASE+'sites.php'), sitesData=await sitesRes.json();
+    if(sitesData.code!==0) return showToast(sitesData.msg||'网站读取失败','error');
+    var select=document.getElementById('analyticsSite'); select.innerHTML='';
+    sitesData.data.forEach(function(s){select.innerHTML+='<option value="'+s.id+'">'+esc(s.name)+' — '+esc(s.domain)+'</option>';});
+    select.onchange=loadAnalyticsData; await loadAnalyticsData();
+}
+async function loadAnalyticsData(){
+    var select=document.getElementById('analyticsSite'); if(!select||!select.value)return;
+    var end=new Date().toISOString().slice(0,10), start=new Date(Date.now()-29*86400000).toISOString().slice(0,10);
+    var res=await apiFetch(API_BASE+'analytics.php?site_id='+encodeURIComponent(select.value)+'&start='+start+'&end='+end), data=await res.json();
+    if(data.code!==0)return showToast(data.msg||'统计读取失败','error'); var d=data.data;
+    document.getElementById('pvTotal').textContent=d.totals.pv; document.getElementById('uvTotal').textContent=d.totals.uv; document.getElementById('sessionTotal').textContent=d.totals.sessions;
+    document.getElementById('pageRows').innerHTML=d.pages.map(function(p){return '<tr><td>'+esc(p.page_title||p.page_path||'-')+'</td><td>'+esc(p.page_path||'-')+'</td><td>'+p.pv+'</td><td>'+p.uv+'</td></tr>';}).join('')||'<tr><td colspan="4">暂无数据</td></tr>';
+    document.getElementById('sourceRows').innerHTML=d.sources.map(function(s){return '<tr><td>'+esc(s.source||'direct')+'</td><td>'+s.sessions+'</td></tr>';}).join('')||'<tr><td colspan="2">暂无数据</td></tr>';
+}
+async function loadSiteManagement(){
+ var res=await apiFetch(API_BASE+'sites.php'),data=await res.json();if(data.code!==0)return showToast(data.msg||'读取失败','error');
+ window.siteManagementData=data.data||[];
+ document.getElementById('siteRows').innerHTML=window.siteManagementData.map(function(s){return '<tr><td>'+s.id+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.domain)+'</td><td>'+esc(s.category)+'</td><td><code>'+esc(s.public_site_key)+'</code></td><td>'+(Number(s.is_active)?'启用':'停用')+'</td><td><button class="btn btn-primary btn-sm" onclick="showTrackerCode('+Number(s.id)+')">接入代码</button></td></tr>';}).join('')||'<tr><td colspan="7">暂无网站</td></tr>';
+}
+function trackerSnippet(site){return '<script\n  src="'+PUBLIC_SERVICE_ORIGIN+'/public/tracker.js"\n  data-site-key="'+site.public_site_key+'">\n<\/script>';}
+function showTrackerCode(id){var site=(window.siteManagementData||[]).find(function(x){return Number(x.id)===Number(id);});if(!site)return showToast('网站不存在','error');document.getElementById('trackerCodeTitle').textContent=site.name+' — 统计接入代码';document.getElementById('trackerCodeText').value=trackerSnippet(site);document.getElementById('trackerCopyStatus').textContent='';document.getElementById('trackerCodeModal').style.display='flex';}
+function closeTrackerCode(){document.getElementById('trackerCodeModal').style.display='none';}
+async function copyTrackerCode(){var el=document.getElementById('trackerCodeText');try{await navigator.clipboard.writeText(el.value);}catch(e){el.select();document.execCommand('copy');}document.getElementById('trackerCopyStatus').textContent='已复制，可直接粘贴到网站公共页脚。';}
+function openSiteCreate(){['newSiteName','newSiteCode','newSiteDomain'].forEach(function(id){document.getElementById(id).value='';});document.getElementById('newSiteCategory').value='overseas';document.getElementById('siteCreateModal').style.display='flex';}
+function closeSiteCreate(){document.getElementById('siteCreateModal').style.display='none';}
+async function createSite(){var name=document.getElementById('newSiteName').value.trim(),code=document.getElementById('newSiteCode').value.trim(),domain=document.getElementById('newSiteDomain').value.trim().toLowerCase(),category=document.getElementById('newSiteCategory').value;if(!name||!code||!domain)return showToast('请完整填写网站名称、代码和主域名','error');if(!/^[a-z0-9][a-z0-9-]{1,62}$/.test(code))return showToast('网站代码只能使用小写字母、数字和短横线','error');if(domain.indexOf('://')>=0||domain.indexOf('/')>=0)return showToast('主域名不要包含协议或路径','error');var btn=document.getElementById('createSiteButton');btn.disabled=true;btn.textContent='正在创建...';try{var r=await apiFetch(API_BASE+'sites.php',{method:'POST',body:{name:name,code:code,domain:domain,category:category}}),d=await r.json();if(d.code!==0)return showToast(d.msg||'创建失败','error');closeSiteCreate();await loadSiteManagement();showTrackerCode(d.data.id);showToast('网站已创建并生成统计接入代码','success');}catch(e){showToast('创建失败','error');}finally{btn.disabled=false;btn.textContent='创建并生成接入代码';}}
+var apiClientSites=[];
+async function loadApiClients(){var results=await Promise.all([apiFetch(API_BASE+'clients.php'),apiFetch(API_BASE+'sites.php')]),d=await results[0].json(),sd=await results[1].json();if(d.code!==0)return showToast(d.msg||'读取失败','error');if(sd.code===0)apiClientSites=sd.data||[];document.getElementById('clientRows').innerHTML=d.data.map(function(c){var scopes=c.scopes,ips=c.allowed_ips;try{scopes=JSON.parse(scopes).join(', ')}catch(e){}try{var parsed=JSON.parse(ips);ips=parsed&&parsed.length?parsed.join(', '):'未限制';}catch(e){ips=ips||'未限制';}var active=Number(c.is_active)===1;return '<tr><td>'+esc(c.name)+'</td><td>'+esc(c.site_name||'-')+'</td><td>'+esc(scopes||'-')+'</td><td>'+esc(ips)+'</td><td>'+esc(c.expires_at||'长期')+'</td><td>'+(active?'启用':'停用')+'</td><td><button class="btn btn-sm '+(active?'btn-outline':'btn-success')+'" onclick="toggleApiClient('+Number(c.id)+','+(active?'0':'1')+')">'+(active?'停用':'启用')+'</button></td></tr>';}).join('')||'<tr><td colspan="7">暂无客户端，请点击“新建客户端”。</td></tr>';}
+function openClientCreate(){var site=document.getElementById('clientSite');site.innerHTML='<option value="">请选择网站</option>'+apiClientSites.map(function(s){return '<option value="'+Number(s.id)+'">'+esc(s.name)+' — '+esc(s.domain)+'</option>';}).join('');document.getElementById('clientName').value='';document.getElementById('clientAllowedIps').value='';document.getElementById('clientExpires').value='';document.querySelectorAll('input[name="clientScope"]').forEach(function(x){x.checked=true;});document.getElementById('clientCreateModal').style.display='flex';}
+function closeClientCreate(){document.getElementById('clientCreateModal').style.display='none';}
+function validIp(ip){if(/^((25[0-5]|2[0-4]\d|1?\d?\d)(\.|$)){4}$/.test(ip))return true;return /^[0-9a-f:]+$/i.test(ip)&&ip.indexOf(':')>=0;}
+function integrationUsage(token,siteId,scopes){var base=PUBLIC_SERVICE_ORIGIN+'/api/integration/v1/',end=new Date(),start=new Date(end.getTime()-29*86400000),to=end.toISOString().slice(0,10),from=start.toISOString().slice(0,10);var lines=['# Bearer Token 只显示本次，请先安全保存','TOKEN="'+token+'"',''];lines.push('# V1.1 能力清单','curl -H "Authorization: Bearer $TOKEN" "'+base+'manifest.php?siteId='+siteId+'"','');if(scopes.indexOf('metrics.read')>=0)lines.push('# 网站统计及维度聚合（最近30天）','curl -H "Authorization: Bearer $TOKEN" "'+base+'site-metrics.php?siteId='+siteId+'&start='+from+'&end='+to+'&granularity=day"','');if(scopes.indexOf('content.read')>=0)lines.push('# 页面访问活动','curl -H "Authorization: Bearer $TOKEN" "'+base+'page-activity.php?siteId='+siteId+'&start='+from+'&end='+to+'"','','# CMS内容状态（未接入CMS时 capabilityAvailable=false）','curl -H "Authorization: Bearer $TOKEN" "'+base+'content-status.php?siteId='+siteId+'"','');if(scopes.indexOf('inquiries.summary')>=0)lines.push('# 询盘维度汇总','curl -H "Authorization: Bearer $TOKEN" "'+base+'inquiry-summary.php?siteId='+siteId+'&start='+from+'&end='+to+'"','');lines.push('# 服务状态（无需 Token）','curl "'+base+'health-live.php"','curl "'+base+'health-ready.php"');return lines.join('\n');}
+async function createApiClient(){var name=document.getElementById('clientName').value.trim(),siteId=Number(document.getElementById('clientSite').value),scopes=Array.from(document.querySelectorAll('input[name="clientScope"]:checked')).map(function(x){return x.value;}),ips=document.getElementById('clientAllowedIps').value.split(/[\n,]+/).map(function(x){return x.trim();}).filter(Boolean),expires=document.getElementById('clientExpires').value;if(!name)return showToast('请输入客户端名称','error');if(!siteId)return showToast('请选择授权网站','error');if(!scopes.length)return showToast('至少选择一个只读权限','error');var invalid=ips.filter(function(ip){return !validIp(ip);});if(invalid.length)return showToast('IP 地址格式不正确：'+invalid[0],'error');var btn=document.getElementById('createClientButton');btn.disabled=true;btn.textContent='正在生成...';try{var r=await apiFetch(API_BASE+'clients.php',{method:'POST',body:{name:name,site_id:siteId,scopes:scopes,allowed_ips:ips,expires_at:expires||null}}),d=await r.json();if(d.code!==0)return showToast(d.msg||'生成失败','error');closeClientCreate();document.getElementById('createdClientToken').value=d.data.token;document.getElementById('createdClientUsage').value=integrationUsage(d.data.token,siteId,scopes);document.getElementById('tokenCopyStatus').textContent='';document.getElementById('usageCopyStatus').textContent='';document.getElementById('clientTokenModal').style.display='flex';await loadApiClients();}catch(e){showToast('生成失败','error');}finally{btn.disabled=false;btn.textContent='生成 Bearer Token';}}
+async function copyCreatedClientToken(){var el=document.getElementById('createdClientToken');try{await navigator.clipboard.writeText(el.value);document.getElementById('tokenCopyStatus').textContent='已复制到剪贴板。';}catch(e){el.select();document.execCommand('copy');document.getElementById('tokenCopyStatus').textContent='已复制到剪贴板。';}}
+function closeClientToken(){document.getElementById('createdClientToken').value='';document.getElementById('clientTokenModal').style.display='none';}
+async function copyCreatedClientUsage(){var el=document.getElementById('createdClientUsage');try{await navigator.clipboard.writeText(el.value);}catch(e){el.select();document.execCommand('copy');}document.getElementById('usageCopyStatus').textContent='调用示例已复制。';}
+async function toggleApiClient(id,active){var r=await apiFetch(API_BASE+'clients.php',{method:'PUT',body:{id:id,is_active:active}}),d=await r.json();if(d.code!==0)return showToast(d.msg||'操作失败','error');showToast(active?'客户端已启用':'客户端已停用','success');loadApiClients();}
+function initIntegrationDebug(){var end=new Date(),start=new Date(end.getTime()-29*86400000);document.getElementById('debugEnd').value=end.toISOString().slice(0,10);document.getElementById('debugStart').value=start.toISOString().slice(0,10);updateIntegrationDebugFields();}
+function updateIntegrationDebugFields(){var endpoint=document.getElementById('debugEndpoint').value;var auth=endpoint.indexOf('health-')!==0;var dated=endpoint==='site-metrics.php'||endpoint==='page-activity.php'||endpoint==='inquiry-summary.php';document.getElementById('debugTokenWrap').style.display=auth?'flex':'none';document.getElementById('debugSiteWrap').style.display=auth?'flex':'none';document.getElementById('debugStartWrap').style.display=dated?'flex':'none';document.getElementById('debugEndWrap').style.display=dated?'flex':'none';document.getElementById('debugRequestUrl').textContent='../api/integration/v1/'+endpoint;}
+async function runIntegrationDebug(){var endpoint=document.getElementById('debugEndpoint').value;var auth=endpoint.indexOf('health-')!==0;var token=document.getElementById('debugToken').value.trim();if(auth&&!token)return showToast('请输入第三方客户端 Bearer Token','error');var params=new URLSearchParams();var siteId=document.getElementById('debugSiteId').value;if(auth&&siteId)params.set('siteId',siteId);if(endpoint==='site-metrics.php'||endpoint==='page-activity.php'||endpoint==='inquiry-summary.php'){var start=document.getElementById('debugStart').value,end=document.getElementById('debugEnd').value;if(start)params.set('start',start);if(end)params.set('end',end);}if(endpoint==='site-metrics.php')params.set('granularity','day');var url='../api/integration/v1/'+endpoint+(params.toString()?'?'+params.toString():'');var headers={Accept:'application/json'};if(auth)headers.Authorization='Bearer '+token;var button=document.getElementById('debugRunButton'),output=document.getElementById('debugResponse');button.disabled=true;button.textContent='请求中...';output.textContent='正在调用接口...';document.getElementById('debugRequestUrl').textContent=url;var started=performance.now();try{var response=await fetch(url,{method:'GET',headers:headers,cache:'no-store'});var text=await response.text(),pretty=text;try{pretty=JSON.stringify(JSON.parse(text),null,2);}catch(e){}document.getElementById('debugHttpStatus').textContent=response.status+' '+response.statusText;document.getElementById('debugHttpStatus').style.color=response.ok?'#1e8e3e':'#d93025';document.getElementById('debugElapsed').textContent=Math.round(performance.now()-started)+' ms';output.textContent=pretty||'(空响应)';}catch(e){document.getElementById('debugHttpStatus').textContent='请求失败';document.getElementById('debugElapsed').textContent=Math.round(performance.now()-started)+' ms';output.textContent=String(e&&e.message?e.message:e);}finally{button.disabled=false;button.textContent='发送测试请求';}}
+function clearIntegrationDebug(){document.getElementById('debugToken').value='';document.getElementById('debugSiteId').value='';document.getElementById('debugHttpStatus').textContent='-';document.getElementById('debugElapsed').textContent='-';document.getElementById('debugResponse').textContent='请选择接口并发送测试请求。';updateIntegrationDebugFields();}
+async function loadOperations(){var r=await apiFetch(API_BASE+'operations.php'),d=await r.json();if(d.code!==0)return showToast(d.msg||'读取失败','error');var x=d.data;document.getElementById('storageSummary').textContent='原始事件 '+(x.storage.raw_events||0)+' 条；保留 '+x.retention_days+' 天；会话超时 '+x.session_timeout_seconds+' 秒；服务器时间 '+x.server_time_utc;document.getElementById('operationRows').innerHTML=x.sites.map(function(s){return '<tr><td>'+esc(s.name)+'</td><td>'+esc(s.domain)+'</td><td>'+s.events_24h+'</td><td>'+s.bots_24h+'</td><td>'+esc(s.last_event_at||'尚未采集')+'</td><td>'+esc(s.last_aggregate_at||'尚未聚合')+'</td></tr>';}).join('');}
+
+var analyticsDetailMode='events',analyticsDetailPage=1,analyticsDetailPages=1;
+async function initAnalyticsDetail(){var r=await apiFetch(API_BASE+'sites.php'),d=await r.json();if(d.code!==0)return showToast(d.msg||'网站读取失败','error');var site=document.getElementById('adSite');site.innerHTML=(d.data||[]).map(function(s){return '<option value="'+Number(s.id)+'">'+esc(s.name)+' — '+esc(s.domain)+'</option>';}).join('');var end=new Date(),start=new Date(end.getTime()-6*86400000);document.getElementById('adEnd').value=end.toISOString().slice(0,10);document.getElementById('adStart').value=start.toISOString().slice(0,10);site.onchange=function(){loadAnalyticsDetail(1);};loadAnalyticsDetail(1);}
+function switchAnalyticsDetail(mode,button){analyticsDetailMode=mode;document.querySelectorAll('.analytics-tabs button').forEach(function(x){x.classList.remove('active');});button.classList.add('active');var names={events:'访问事件',sessions:'会话明细',pages:'页面分析',visitors:'访客分析'};document.getElementById('adTableTitle').textContent=names[mode];document.getElementById('adDevice').style.display=mode==='events'?'':'none';document.getElementById('adBot').style.display=(mode==='events'||mode==='sessions')?'':'none';loadAnalyticsDetail(1);}
+function analyticsDetailParams(page){var p=new URLSearchParams({mode:analyticsDetailMode,site_id:document.getElementById('adSite').value,page:String(page||1),page_size:'30',start:document.getElementById('adStart').value,end:document.getElementById('adEnd').value});var k=document.getElementById('adKeyword').value.trim(),device=document.getElementById('adDevice').value,bot=document.getElementById('adBot').value;if(k)p.set('keyword',k);if(device&&analyticsDetailMode==='events')p.set('device',device);if(bot!=='')p.set('is_bot',bot);return p;}
+async function loadAnalyticsDetail(page){if(!document.getElementById('adSite').value)return;analyticsDetailPage=page||1;var r=await apiFetch(API_BASE+'analytics-detail.php?'+analyticsDetailParams(analyticsDetailPage)),d=await r.json();if(d.code!==0)return showToast(d.msg||'读取失败','error');renderAnalyticsDetail(d.data);}
+function renderAnalyticsDetail(data){analyticsDetailPages=data.total_pages||1;document.getElementById('adCount').textContent='共 '+data.total+' 条';var heads=[],rows=[];
+ if(analyticsDetailMode==='events'){heads=['时间','页面','来源','设备','IP地址','访客/会话','流量','操作'];rows=data.list.map(function(x){return [x.occurred_at,'<strong>'+esc(x.page_title||'-')+'</strong><br><span class="mono">'+esc(x.page_path||'-')+'</span>',esc(x.source||'direct')+'<br><span class="mono">'+esc(x.referrer||'-')+'</span>',esc(x.device_type||'-'),'<span class="mono">'+esc(x.ip_address||x.masked_ip||'-')+'</span>','<span class="mono">'+esc((x.visitor_hash||'').slice(0,12))+'</span><br>会话 #'+esc(x.session_id||'-'),Number(x.is_bot)?'<span class="badge">机器人</span>':'正常','<button class="btn btn-outline btn-sm" onclick="showSessionDetail('+Number(x.session_id)+')">会话路径</button>'];});}
+ if(analyticsDetailMode==='sessions'){heads=['开始时间','持续/事件','入口页面','来源','设备','IP地址','访客标识','操作'];rows=data.list.map(function(x){return [x.started_at,Number(x.duration_seconds||0)+'秒 / '+Number(x.event_count||0)+'事件','<span class="mono">'+esc(x.landing_url||'-')+'</span>',esc(x.source||'direct')+'<br>'+esc(x.referrer||'-'),esc(x.device_type||'-'),'<span class="mono">'+esc(x.ip_address||x.masked_ip||'-')+'</span>','<span class="mono">'+esc((x.visitor_hash||'').slice(0,16))+'</span>','<button class="btn btn-outline btn-sm" onclick="showSessionDetail('+Number(x.id)+')">访问路径</button>'];});}
+ if(analyticsDetailMode==='pages'){heads=['页面','PV','UV','会话','首次访问','最近访问','操作'];rows=data.list.map(function(x){return ['<strong>'+esc(x.page_title||'-')+'</strong><br><span class="mono">'+esc(x.page_path||'-')+'</span>',x.pv,x.uv,x.sessions,x.first_seen_at,x.last_seen_at,'<button class="btn btn-outline btn-sm" onclick="showPageDetail(\''+encodeURIComponent(x.page_path||'')+'\')">分析</button>'];});}
+ if(analyticsDetailMode==='visitors'){heads=['最近访问','IP地址','访客标识','设备/来源','会话','事件','页面','操作'];rows=data.list.map(function(x){return [x.last_seen_at,'<span class="mono">'+esc(x.ip_address||x.masked_ip||'-')+'</span>','<span class="mono">'+esc((x.visitor_hash||'').slice(0,18))+'</span>',esc(x.device_type||'-')+' / '+esc(x.source||'-'),x.session_count,x.event_count,x.page_count,'<button class="btn btn-outline btn-sm" onclick="showVisitorDetail(\''+esc(x.visitor_hash)+'\')">详情</button>'];});}
+ document.getElementById('adHead').innerHTML='<tr>'+heads.map(function(h){return '<th>'+h+'</th>';}).join('')+'</tr>';document.getElementById('adRows').innerHTML=rows.map(function(row){return '<tr>'+row.map(function(c){return '<td>'+c+'</td>';}).join('')+'</tr>';}).join('')||'<tr><td colspan="'+heads.length+'" style="text-align:center;padding:30px;color:#667085">暂无数据</td></tr>';renderAnalyticsDetailPages();}
+function renderAnalyticsDetailPages(){document.getElementById('adPageInfo').textContent='第 '+analyticsDetailPage+' 页 / 共 '+analyticsDetailPages+' 页';var html='<button '+(analyticsDetailPage<=1?'disabled':'')+' onclick="loadAnalyticsDetail('+(analyticsDetailPage-1)+')">«</button>';for(var i=Math.max(1,analyticsDetailPage-2);i<=Math.min(analyticsDetailPages,analyticsDetailPage+2);i++)html+='<button class="'+(i===analyticsDetailPage?'active':'')+'" onclick="loadAnalyticsDetail('+i+')">'+i+'</button>';html+='<button '+(analyticsDetailPage>=analyticsDetailPages?'disabled':'')+' onclick="loadAnalyticsDetail('+(analyticsDetailPage+1)+')">»</button>';document.getElementById('adPageButtons').innerHTML=html;}
+function resetAnalyticsDetailFilters(){document.getElementById('adKeyword').value='';document.getElementById('adDevice').value='';document.getElementById('adBot').value='';var end=new Date(),start=new Date(end.getTime()-6*86400000);document.getElementById('adEnd').value=end.toISOString().slice(0,10);document.getElementById('adStart').value=start.toISOString().slice(0,10);loadAnalyticsDetail(1);}
+function closeAnalyticsDetailModal(){document.getElementById('analyticsDetailModal').style.display='none';}
+function openAnalyticsDetailModal(title,html){document.getElementById('analyticsDetailTitle').textContent=title;document.getElementById('analyticsDetailBody').innerHTML=html;document.getElementById('analyticsDetailModal').style.display='flex';}
+async function showSessionDetail(id){var p=new URLSearchParams({mode:'session',site_id:document.getElementById('adSite').value,id:String(id)}),r=await apiFetch(API_BASE+'analytics-detail.php?'+p),d=await r.json();if(d.code!==0)return showToast(d.msg||'读取失败','error');var s=d.data.session,html='<div class="detail-grid"><div class="detail-item"><div class="detail-label">完整 IP</div><div class="mono">'+esc(s.ip_address||s.masked_ip||'-')+'</div></div><div class="detail-item"><div class="detail-label">访客标识</div><div class="mono">'+esc(s.visitor_hash)+'</div></div><div class="detail-item"><div class="detail-label">开始/结束</div><div>'+esc(s.started_at)+'<br>'+esc(s.last_seen_at)+'</div></div><div class="detail-item"><div class="detail-label">设备/来源</div><div>'+esc(s.device_type||'-')+' / '+esc(s.source||'-')+'</div></div></div><h4>访问路径</h4><ol class="path-list">'+d.data.events.map(function(e){return '<li><strong>'+esc(e.occurred_at)+'</strong> '+esc(e.page_title||'-')+'<br><span class="mono">'+esc(e.page_path||'-')+'</span></li>';}).join('')+'</ol>';openAnalyticsDetailModal('会话 #'+id,html);}
+async function showVisitorDetail(hash){var p=new URLSearchParams({mode:'visitor',site_id:document.getElementById('adSite').value,visitor_hash:hash}),r=await apiFetch(API_BASE+'analytics-detail.php?'+p),d=await r.json();if(d.code!==0)return showToast(d.msg||'读取失败','error');var v=d.data.visitor,html='<div class="detail-grid"><div class="detail-item"><div class="detail-label">完整 IP</div><div class="mono">'+esc(v.ip_address||'-')+'</div></div><div class="detail-item"><div class="detail-label">访客标识</div><div class="mono">'+esc(v.visitor_hash)+'</div></div><div class="detail-item"><div class="detail-label">首次/最近</div><div>'+esc(v.first_seen_at)+'<br>'+esc(v.last_seen_at)+'</div></div><div class="detail-item"><div class="detail-label">会话数</div><div>'+v.session_count+'</div></div></div><h4>浏览页面</h4><table><thead><tr><th>页面</th><th>PV</th><th>最近访问</th></tr></thead><tbody>'+d.data.pages.map(function(x){return '<tr><td>'+esc(x.page_title||x.page_path||'-')+'<br><span class="mono">'+esc(x.page_path||'-')+'</span></td><td>'+x.pv+'</td><td>'+x.last_seen_at+'</td></tr>';}).join('')+'</tbody></table>';openAnalyticsDetailModal('访客详情',html);}
+async function showPageDetail(encodedPath){var path=decodeURIComponent(encodedPath),p=new URLSearchParams({mode:'page',site_id:document.getElementById('adSite').value,path:path,start:document.getElementById('adStart').value,end:document.getElementById('adEnd').value}),r=await apiFetch(API_BASE+'analytics-detail.php?'+p),d=await r.json();if(d.code!==0)return showToast(d.msg||'读取失败','error');var s=d.data.summary,html='<div class="stats-grid"><div class="stat-card"><div class="stat-info"><div class="stat-value">'+s.pv+'</div><div class="stat-label">PV</div></div></div><div class="stat-card"><div class="stat-info"><div class="stat-value">'+s.uv+'</div><div class="stat-label">UV</div></div></div><div class="stat-card"><div class="stat-info"><div class="stat-value">'+s.sessions+'</div><div class="stat-label">会话</div></div></div></div><h4>每日趋势</h4><table><thead><tr><th>日期</th><th>PV</th><th>UV</th></tr></thead><tbody>'+d.data.daily.map(function(x){return '<tr><td>'+x.day+'</td><td>'+x.pv+'</td><td>'+x.uv+'</td></tr>';}).join('')+'</tbody></table><h4>最近访问</h4><table><thead><tr><th>时间</th><th>IP</th><th>来源</th><th>设备</th></tr></thead><tbody>'+d.data.recent.map(function(x){return '<tr><td>'+x.occurred_at+'</td><td class="mono">'+esc(x.ip_address||'-')+'</td><td>'+esc(x.source||'-')+'</td><td>'+esc(x.device_type||'-')+'</td></tr>';}).join('')+'</tbody></table>';openAnalyticsDetailModal(s.page_title||path,html);}
 
 var statusDict = [];
 var statusOptions = {};
@@ -429,6 +509,8 @@ async function openDetail(id) {
             document.getElementById('dTime').textContent = m.created_at;
             document.getElementById('dHandler').value = m.handler || '';
             document.getElementById('dHandleRecord').value = m.handle_record || '';
+            document.getElementById('dValidity').value = m.validity_status || 'pending';
+            document.getElementById('dValidityNote').value = m.validity_note || '';
 
             // 状态下拉
             var sel = document.getElementById('dStatus');
@@ -461,6 +543,8 @@ async function saveDetail() {
                 status: parseInt(document.getElementById('dStatus').value),
                 handler: document.getElementById('dHandler').value.trim(),
                 handle_record: document.getElementById('dHandleRecord').value.trim()
+                ,validity_status: document.getElementById('dValidity').value
+                ,validity_note: document.getElementById('dValidityNote').value.trim()
             })
         });
         var data = await res.json();
@@ -968,7 +1052,7 @@ function renderApiExampleCards() {
         var sample = JSON.stringify(Object.assign({ api_key: 'YOUR_KEY_HERE' }, item.payload), null, 2);
         html += '<section style="margin-top:12px;border:1px solid #e1e5eb;border-radius:10px;overflow:hidden;">'
             + '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;background:#f5f7fa;">'
-            + '<strong>' + esc(item.title) + '</strong><code>/api/' + esc(item.endpoint) + '</code></div>'
+            + '<strong>' + esc(item.title) + '</strong><code>' + esc(PUBLIC_SERVICE_ORIGIN + '/api/' + item.endpoint) + '</code></div>'
             + '<div style="padding:10px 14px 0;color:#5f6775;font-size:12px;">字段：<code>' + esc(Object.keys(item.payload).join(', ')) + '</code></div>'
             + '<div style="padding:14px;"><label style="font-size:12px;color:#5f6775;">可编辑请求 JSON</label>'
             + '<textarea id="apiPayload' + index + '" style="width:100%;min-height:230px;margin-top:6px;padding:12px;background:#1a1a2e;color:#e0e0e0;border:0;border-radius:8px;font:12px/1.55 Consolas,monospace;resize:vertical;">' + esc(sample) + '</textarea>'
@@ -1003,7 +1087,7 @@ async function runApiExample(index) {
         var payload = getApiExamplePayload(index);
         result.style.display = 'block';
         result.textContent = '正在发送...';
-        var response = await fetch('../api/' + apiExamples[index].endpoint, {
+        var response = await fetch(PUBLIC_SERVICE_ORIGIN + '/api/' + apiExamples[index].endpoint, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
         });
         var data = await response.json();
@@ -1019,7 +1103,7 @@ async function runApiExample(index) {
 async function copyApiExample(index) {
     try {
         var payload = getApiExamplePayload(index);
-        var url = new URL('../api/' + apiExamples[index].endpoint, window.location.href).href;
+        var url = PUBLIC_SERVICE_ORIGIN + '/api/' + apiExamples[index].endpoint;
         var code = "fetch('" + url + "', {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify(" + JSON.stringify(payload, null, 2).replace(/^/gm, '  ') + ")\n})\n.then(response => response.json())\n.then(data => console.log(data))\n.catch(error => console.error(error));";
         if (navigator.clipboard && window.isSecureContext) {
             await navigator.clipboard.writeText(code);

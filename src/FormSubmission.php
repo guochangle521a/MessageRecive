@@ -2,6 +2,7 @@
 
 class FormSubmission
 {
+    private const COMMON_EXTRA_FIELDS = ['privacy_consent','privacy_consent_at','privacy_policy_version','utm_source','utm_medium','utm_campaign','first_touch_source','conversion_source','product_key','inquiry_source'];
     private const EXTRA_FIELDS = [
         'business-inquiry' => ['industry', 'inquiry_type', 'marketing_consent'],
         'sample-request' => ['target_product', 'privacy_consent'],
@@ -60,6 +61,9 @@ class FormSubmission
                 $extra[$field] = $clean[$field];
             }
         }
+        foreach (self::COMMON_EXTRA_FIELDS as $field) {
+            if (array_key_exists($field, $clean) && $clean[$field] !== '' && $clean[$field] !== null) $extra[$field] = $clean[$field];
+        }
         if ($type !== 'china-website-inquiry') {
             self::validateOptionalFields($type, $clean);
         }
@@ -68,9 +72,10 @@ class FormSubmission
         try {
             if ($type === 'china-website-inquiry') {
                 $db->execute(
-                    'INSERT INTO china_website_messages (inquiry_type,region,name,company,phone,email,remark,preferred_contact,source_url,source,api_key,ip_address,user_agent,status)
-                     VALUES (:inquiry_type,:region,:name,:company,:phone,:email,:remark,:preferred_contact,:source_url,:source,:api_key,:ip,:ua,0)',
+                    'INSERT INTO china_website_messages (site_id,inquiry_type,region,name,company,phone,email,remark,preferred_contact,source_url,source,api_key,ip_address,user_agent,status)
+                     VALUES (:site_id,:inquiry_type,:region,:name,:company,:phone,:email,:remark,:preferred_contact,:source_url,:source,:api_key,:ip,:ua,0)',
                     [
+                        ':site_id' => $key['site_id'] ?? null,
                         ':inquiry_type' => self::nullable($clean, 'inquiry_type'), ':region' => self::nullable($clean, 'region'),
                         ':name' => self::nullable($clean, 'name'), ':company' => self::nullable($clean, 'company'),
                         ':phone' => self::nullable($clean, 'phone'), ':email' => self::nullable($clean, 'email'),
@@ -84,15 +89,20 @@ class FormSubmission
                 Response::success(['id' => (int)$id, 'type' => $type, 'submitted_at' => date('Y-m-d H:i:s')], '提交成功');
             }
             $db->execute(
-                'INSERT INTO messages (type,name,phone,email,company,country,remark,source_url,extra_data,source,api_key,ip_address,user_agent,status)
-                 VALUES (:type,:name,:phone,:email,:company,:country,:remark,:source_url,:extra_data,:source,:api_key,:ip,:ua,0)',
+                'INSERT INTO messages (site_id,type,name,phone,email,company,country,remark,source_url,extra_data,source,inquiry_source,product_key,utm_source,utm_medium,utm_campaign,first_touch_source,conversion_source,api_key,ip_address,user_agent,status)
+                 VALUES (:site_id,:type,:name,:phone,:email,:company,:country,:remark,:source_url,:extra_data,:source,:inquiry_source,:product_key,:utm_source,:utm_medium,:utm_campaign,:first_touch,:conversion,:api_key,:ip,:ua,0)',
                 [
+                    ':site_id' => $key['site_id'] ?? null,
                     ':type' => $type, ':name' => self::text($clean, 'name'), ':phone' => self::text($clean, 'phone'),
                     ':email' => self::nullable($clean, 'email'), ':company' => self::nullable($clean, 'company'),
                     ':country' => self::nullable($clean, 'country'), ':remark' => self::nullable($clean, 'remark'),
                     ':source_url' => self::nullable($clean, 'source_url'),
                     ':extra_data' => $extra ? json_encode($extra, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
-                    ':source' => $key['site_name'], ':api_key' => trim($data['api_key']), ':ip' => $ip,
+                    ':source' => $key['site_name'], ':inquiry_source'=>self::nullable($clean,'inquiry_source'),
+                    ':product_key'=>self::nullable($clean,'product_key')??self::nullable($clean,'target_product'),
+                    ':utm_source'=>self::nullable($clean,'utm_source'),':utm_medium'=>self::nullable($clean,'utm_medium'),':utm_campaign'=>self::nullable($clean,'utm_campaign'),
+                    ':first_touch'=>self::nullable($clean,'first_touch_source'),':conversion'=>self::nullable($clean,'conversion_source'),
+                    ':api_key' => trim($data['api_key']), ':ip' => $ip,
                     ':ua' => $_SERVER['HTTP_USER_AGENT'] ?? null
                 ]
             );

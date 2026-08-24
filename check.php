@@ -25,8 +25,8 @@ echo '<p class="sub">检查系统运行环境和数据库状态</p>';
 echo '<div class="row"><span class="label">PHP 版本</span><span class="val ' . (version_compare(PHP_VERSION, '7.4', '>=') ? 'ok' : 'err') . '">' . PHP_VERSION . (version_compare(PHP_VERSION, '7.4', '>=') ? ' &#x2705;' : ' &#x274C; (需要 >= 7.4)') . '</span></div>';
 
 // ===== 2. PDO 扩展 =====
-$hasPdo = extension_loaded('pdo') && extension_loaded('pdo_sqlite');
-echo '<div class="row"><span class="label">PDO SQLite 扩展</span><span class="val ' . ($hasPdo ? 'ok' : 'err') . '">' . ($hasPdo ? '已安装 &#x2705;' : '未安装 &#x274C;') . '</span></div>';
+$hasPdo = extension_loaded('pdo') && extension_loaded('pdo_mysql');
+echo '<div class="row"><span class="label">PDO MySQL 扩展</span><span class="val ' . ($hasPdo ? 'ok' : 'err') . '">' . ($hasPdo ? '已安装 &#x2705;' : '未安装 &#x274C;') . '</span></div>';
 
 // ===== 3. JSON 扩展 =====
 echo '<div class="row"><span class="label">JSON 扩展</span><span class="val ' . (extension_loaded('json') ? 'ok' : 'err') . '">' . (extension_loaded('json') ? '已安装 &#x2705;' : '未安装 &#x274C;') . '</span></div>';
@@ -47,7 +47,7 @@ try {
     echo '<div class="row"><span class="label">数据库初始化</span><span class="val ok">成功 &#x2705;</span></div>';
 
     // 检查表
-    $tables = ['messages', 'api_keys', 'status_dict', 'users', 'user_sources', 'sessions', 'rate_limits'];
+    $tables = ['organizations','sites','messages','china_website_messages','analytics_events','daily_site_metrics','api_keys','users','roles','user_sites','sessions'];
     foreach ($tables as $t) {
         try {
             $cnt = $db->getPdo()->query("SELECT COUNT(*) FROM $t")->fetchColumn();
@@ -71,7 +71,7 @@ try {
 
 // ===== 7. API Key =====
 try {
-    $keys = $db->query("SELECT site_name, api_key, substr(api_key, 1, 6) || '****' || substr(api_key, -4) as masked_key FROM api_keys WHERE is_active = 1");
+    $keys = $db->query("SELECT site_name,api_key,CONCAT(SUBSTRING(api_key,1,6),'****',RIGHT(api_key,4)) masked_key FROM api_keys WHERE is_active=1");
     echo '<div class="row"><span class="label">API Keys</span><span class="val ok">' . count($keys) . ' 个 &#x2705;</span></div>';
     foreach ($keys as $k) {
         echo '<div class="row"><span class="label">&nbsp;&nbsp;' . htmlspecialchars($k['site_name']) . '</span><span class="val" style="font-size:11px;">' . htmlspecialchars($k['masked_key']) . '</span></div>';

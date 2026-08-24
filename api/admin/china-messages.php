@@ -41,7 +41,9 @@ if ($method === 'PUT') {
     if (isset($input['status'])) { $sets[]='status=:st'; $params[':st']=intval($input['status']); }
     if (isset($input['handler'])) { $sets[]='handler=:handler'; $params[':handler']=trim($input['handler']); }
     if (isset($input['handle_record'])) { $sets[]='handle_record=:record'; $params[':record']=$input['handle_record']; }
-    if ($sets) { $sets[]="handled_at=datetime('now','localtime')"; $sets[]='handled_by=:by'; $db->execute('UPDATE china_website_messages SET '.implode(',',$sets).' WHERE id=:id',$params); }
+    if (isset($input['validity_status'])) { $v=(string)$input['validity_status']; if(!in_array($v,['pending','valid','spam'],true)) Response::error(400,'询盘判断状态无效'); $sets[]='validity_status=:validity';$sets[]='validity_decided_at=UTC_TIMESTAMP()';$sets[]='validity_decided_by=:vby';$params[':validity']=$v;$params[':vby']=$user['id']; }
+    if (isset($input['validity_note'])) { $sets[]='validity_note=:vnote';$params[':vnote']=trim((string)$input['validity_note']); }
+    if ($sets) { $sets[]="handled_at=UTC_TIMESTAMP()"; $sets[]='handled_by=:by'; $db->execute('UPDATE china_website_messages SET '.implode(',',$sets).' WHERE id=:id',$params); }
     Response::success($db->queryOne('SELECT * FROM china_website_messages WHERE id=:id',[':id'=>$id]),'更新成功');
 }
 
@@ -49,7 +51,7 @@ if ($method === 'POST') {
     $input=json_decode(file_get_contents('php://input'),true)?:[]; $ids=array_values(array_filter(array_map('intval',$input['ids']??[]))); $status=intval($input['status']??-1);
     if (!$ids || $status<0) Response::error(400,'参数不完整');
     $marks=implode(',',array_fill(0,count($ids),'?'));
-    $stmt=$db->getPdo()->prepare("UPDATE china_website_messages SET status=?,handled_at=datetime('now','localtime'),handled_by=? WHERE id IN ($marks)");
+    $stmt=$db->getPdo()->prepare("UPDATE china_website_messages SET status=?,handled_at=UTC_TIMESTAMP(),handled_by=? WHERE id IN ($marks)");
     $stmt->execute(array_merge([$status,$user['real_name']??$user['username']],$ids));
     Response::success(null,'批量更新成功');
 }

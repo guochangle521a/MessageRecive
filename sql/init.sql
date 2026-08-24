@@ -1,141 +1,26 @@
--- ==========================================
--- 留言管理系统 - 数据库初始化脚本
--- 数据库文件: data/messages.db (SQLite)
--- ==========================================
-
--- 留言主表
-CREATE TABLE IF NOT EXISTS messages (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    name            TEXT    NOT NULL,
-    phone           TEXT    NOT NULL,
-    email           TEXT    DEFAULT NULL,
-    type            TEXT    NOT NULL DEFAULT '',
-    company         TEXT    DEFAULT NULL,
-    country         TEXT    DEFAULT NULL,
-    remark          TEXT    DEFAULT NULL,
-    source_url      TEXT    DEFAULT NULL,
-    extra_data      TEXT    DEFAULT NULL,
-    source          TEXT    NOT NULL,             -- 来源名称 = api_keys.site_name
-    api_key         TEXT    NOT NULL,
-    ip_address      TEXT    DEFAULT NULL,
-    user_agent      TEXT    DEFAULT NULL,
-    status          INTEGER DEFAULT 0,            -- 状态码关联 status_dict.code
-    handle_record   TEXT    DEFAULT NULL,         -- 处理记录
-    handler         TEXT    DEFAULT NULL,         -- 处理人
-    created_at      TEXT    DEFAULT (datetime('now','localtime')),
-    handled_at      TEXT    DEFAULT NULL,
-    handled_by      TEXT    DEFAULT NULL
-);
-
--- 索引
-CREATE INDEX IF NOT EXISTS idx_source     ON messages(source);
-CREATE INDEX IF NOT EXISTS idx_status     ON messages(status);
-CREATE INDEX IF NOT EXISTS idx_created_at ON messages(created_at);
-CREATE INDEX IF NOT EXISTS idx_handler    ON messages(handler);
-
--- 三奇国内官网留言（与海外独立站完全分表）
-CREATE TABLE IF NOT EXISTS china_website_messages (
-    id                INTEGER PRIMARY KEY AUTOINCREMENT,
-    inquiry_type      TEXT DEFAULT NULL,
-    region            TEXT DEFAULT NULL,
-    name              TEXT DEFAULT NULL,
-    company           TEXT DEFAULT NULL,
-    phone             TEXT DEFAULT NULL,
-    email             TEXT DEFAULT NULL,
-    remark            TEXT DEFAULT NULL,
-    preferred_contact TEXT DEFAULT NULL,
-    source_url        TEXT DEFAULT NULL,
-    source            TEXT NOT NULL,
-    api_key           TEXT NOT NULL,
-    ip_address        TEXT DEFAULT NULL,
-    user_agent        TEXT DEFAULT NULL,
-    status            INTEGER DEFAULT 0,
-    handle_record     TEXT DEFAULT NULL,
-    handler           TEXT DEFAULT NULL,
-    created_at        TEXT DEFAULT (datetime('now','localtime')),
-    handled_at        TEXT DEFAULT NULL,
-    handled_by        TEXT DEFAULT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_china_status ON china_website_messages(status);
-CREATE INDEX IF NOT EXISTS idx_china_created ON china_website_messages(created_at);
-
--- 频率限制表（防刷）
-CREATE TABLE IF NOT EXISTS rate_limits (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    ip_address  TEXT    NOT NULL,
-    action_type TEXT    DEFAULT 'submit',
-    phone       TEXT    DEFAULT '',
-    created_at  TEXT    DEFAULT (datetime('now','localtime'))
-);
-CREATE INDEX IF NOT EXISTS idx_rate_ip ON rate_limits(ip_address);
-CREATE INDEX IF NOT EXISTS idx_rate_time ON rate_limits(created_at);
-
--- API Key 表 (简化：只需来源名称)
-CREATE TABLE IF NOT EXISTS api_keys (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    api_key     TEXT    UNIQUE NOT NULL,
-    site_name   TEXT    NOT NULL,             -- 来源名称，留言列表中显示为source
-    site_scope  TEXT    DEFAULT 'overseas',   -- overseas / china
-    is_active   INTEGER DEFAULT 1,
-    created_at  TEXT    DEFAULT (datetime('now','localtime'))
-);
-
--- 状态字典表
-CREATE TABLE IF NOT EXISTS status_dict (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    code        INTEGER NOT NULL UNIQUE,
-    name        TEXT    NOT NULL,
-    color       TEXT    DEFAULT '#e8710a',
-    sort_order  INTEGER DEFAULT 0,
-    is_active   INTEGER DEFAULT 1
-);
-
--- 初始化状态字典
-INSERT OR IGNORE INTO status_dict (code, name, color, sort_order) VALUES (0, '新留言', '#e8710a', 1);
-INSERT OR IGNORE INTO status_dict (code, name, color, sort_order) VALUES (1, '已联系', '#1a73e8', 2);
-INSERT OR IGNORE INTO status_dict (code, name, color, sort_order) VALUES (2, '已成交', '#1e8e3e', 3);
-INSERT OR IGNORE INTO status_dict (code, name, color, sort_order) VALUES (3, '无效', '#8892a4', 4);
-
--- 用户表
-CREATE TABLE IF NOT EXISTS users (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    username    TEXT    UNIQUE NOT NULL,
-    password    TEXT    NOT NULL,             -- password_hash
-    role        TEXT    DEFAULT 'user',       -- 'admin' / 'user'
-    real_name   TEXT    DEFAULT NULL,         -- 真实姓名
-    can_view_china INTEGER DEFAULT 0,          -- 国内官网留言权限
-    is_active   INTEGER DEFAULT 1,
-    created_at  TEXT    DEFAULT (datetime('now','localtime'))
-);
-
--- 用户来源权限表（非管理员用户只能看指定来源的留言）
-CREATE TABLE IF NOT EXISTS user_sources (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id     INTEGER NOT NULL,
-    source      TEXT    NOT NULL,             -- 可见的来源名称
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_user_sources ON user_sources(user_id);
-
--- 登录会话表（Token认证）
-CREATE TABLE IF NOT EXISTS sessions (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id     INTEGER NOT NULL,
-    token       TEXT    UNIQUE NOT NULL,
-    ip_address  TEXT    DEFAULT '',
-    user_agent  TEXT    DEFAULT '',
-    created_at  TEXT    DEFAULT (datetime('now','localtime')),
-    expires_at  TEXT    NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
-
--- ========== 初始化数据 ==========
-
--- 默认管理员: admin / 首次部署后请立即修改密码
-INSERT OR IGNORE INTO users (id, username, password, role, real_name)
-VALUES (1, 'admin', '$2y$10$Cbqllt5LGnBJfNEKJL6yLOdSWpv85Ar7lkAhHgn65WcG0NWIq6m.a', 'admin', '系统管理员');
-
--- API Key 请在后台按站点单独创建，不再内置可预测的默认 Key。
+CREATE TABLE IF NOT EXISTS organizations (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,name VARCHAR(160) NOT NULL,code VARCHAR(64) NOT NULL UNIQUE,is_active TINYINT(1) NOT NULL DEFAULT 1,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS sites (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,organization_id BIGINT UNSIGNED NOT NULL,name VARCHAR(160) NOT NULL,code VARCHAR(64) NOT NULL UNIQUE,domain VARCHAR(255) NOT NULL UNIQUE,category ENUM('overseas','china','other') NOT NULL DEFAULT 'other',public_site_key CHAR(40) NOT NULL UNIQUE,is_active TINYINT(1) NOT NULL DEFAULT 1,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,FOREIGN KEY(organization_id) REFERENCES organizations(id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS site_domains (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,site_id BIGINT UNSIGNED NOT NULL,domain VARCHAR(255) NOT NULL UNIQUE,is_primary TINYINT(1) NOT NULL DEFAULT 0,FOREIGN KEY(site_id) REFERENCES sites(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS messages (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,site_id BIGINT UNSIGNED NULL,type VARCHAR(64) NOT NULL DEFAULT '',name VARCHAR(160) NULL,phone VARCHAR(80) NULL,email VARCHAR(255) NULL,company VARCHAR(255) NULL,country VARCHAR(120) NULL,remark TEXT NULL,source_url TEXT NULL,extra_data JSON NULL,source VARCHAR(160) NOT NULL,inquiry_source VARCHAR(80) NULL,product_key VARCHAR(160) NULL,utm_source VARCHAR(255) NULL,utm_medium VARCHAR(255) NULL,utm_campaign VARCHAR(255) NULL,first_touch_source VARCHAR(80) NULL,conversion_source VARCHAR(80) NULL,api_key VARCHAR(128) NOT NULL,ip_address VARCHAR(45) NULL,user_agent TEXT NULL,status INT NOT NULL DEFAULT 0,validity_status ENUM('pending','valid','spam') NOT NULL DEFAULT 'pending',validity_note TEXT NULL,validity_decided_at DATETIME NULL,validity_decided_by BIGINT UNSIGNED NULL,handle_record TEXT NULL,handler VARCHAR(160) NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,handled_at DATETIME NULL,handled_by VARCHAR(160) NULL,INDEX(site_id),INDEX(source),INDEX(status),INDEX(validity_status),INDEX(created_at),INDEX idx_inquiry_dimensions(site_id,inquiry_source,product_key),FOREIGN KEY(site_id) REFERENCES sites(id) ON DELETE SET NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS china_website_messages (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,site_id BIGINT UNSIGNED NULL,inquiry_type VARCHAR(100) NULL,region VARCHAR(160) NULL,name VARCHAR(160) NULL,company VARCHAR(255) NULL,phone VARCHAR(80) NULL,email VARCHAR(255) NULL,remark TEXT NULL,preferred_contact VARCHAR(80) NULL,source_url TEXT NULL,source VARCHAR(160) NOT NULL,api_key VARCHAR(128) NOT NULL,ip_address VARCHAR(45) NULL,user_agent TEXT NULL,status INT NOT NULL DEFAULT 0,validity_status ENUM('pending','valid','spam') NOT NULL DEFAULT 'pending',validity_note TEXT NULL,validity_decided_at DATETIME NULL,validity_decided_by BIGINT UNSIGNED NULL,handle_record TEXT NULL,handler VARCHAR(160) NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,handled_at DATETIME NULL,handled_by VARCHAR(160) NULL,INDEX(site_id),INDEX(status),INDEX(validity_status),INDEX(created_at),FOREIGN KEY(site_id) REFERENCES sites(id) ON DELETE SET NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS rate_limits (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,ip_address VARCHAR(45) NOT NULL,action_type VARCHAR(32) NOT NULL DEFAULT 'submit',phone VARCHAR(80) NOT NULL DEFAULT '',created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,INDEX(ip_address,action_type,created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS api_keys (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,api_key VARCHAR(128) NOT NULL UNIQUE,site_id BIGINT UNSIGNED NULL,site_name VARCHAR(160) NOT NULL,site_scope ENUM('overseas','china','other') NOT NULL DEFAULT 'overseas',is_active TINYINT(1) NOT NULL DEFAULT 1,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,FOREIGN KEY(site_id) REFERENCES sites(id) ON DELETE SET NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS status_dict (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,code INT NOT NULL UNIQUE,name VARCHAR(80) NOT NULL,color VARCHAR(16) NOT NULL DEFAULT '#e8710a',sort_order INT NOT NULL DEFAULT 0,is_active TINYINT(1) NOT NULL DEFAULT 1) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+INSERT IGNORE INTO status_dict(code,name,color,sort_order) VALUES (0,'新留言','#e8710a',1),(1,'已联系','#1a73e8',2),(2,'已成交','#1e8e3e',3),(3,'无效','#8892a4',4);
+CREATE TABLE IF NOT EXISTS roles (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,code VARCHAR(64) NOT NULL UNIQUE,name VARCHAR(100) NOT NULL,permissions JSON NOT NULL,is_system TINYINT(1) NOT NULL DEFAULT 0) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS users (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,username VARCHAR(100) NOT NULL UNIQUE,password VARCHAR(255) NOT NULL,role VARCHAR(64) NOT NULL DEFAULT 'user',role_id BIGINT UNSIGNED NULL,real_name VARCHAR(160) NULL,can_view_china TINYINT(1) NOT NULL DEFAULT 0,is_active TINYINT(1) NOT NULL DEFAULT 1,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,FOREIGN KEY(role_id) REFERENCES roles(id) ON DELETE SET NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS user_sites (user_id BIGINT UNSIGNED NOT NULL,site_id BIGINT UNSIGNED NOT NULL,PRIMARY KEY(user_id,site_id),FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,FOREIGN KEY(site_id) REFERENCES sites(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS user_sources (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,user_id BIGINT UNSIGNED NOT NULL,source VARCHAR(160) NOT NULL,FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,INDEX(user_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS sessions (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,user_id BIGINT UNSIGNED NOT NULL,token CHAR(64) NOT NULL UNIQUE,ip_address VARCHAR(45) NOT NULL DEFAULT '',user_agent TEXT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,expires_at DATETIME NOT NULL,FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,INDEX(token)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS analytics_sessions (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,site_id BIGINT UNSIGNED NOT NULL,session_key CHAR(64) NOT NULL,visitor_hash CHAR(64) NOT NULL,ip_address VARCHAR(45) NULL,masked_ip VARCHAR(45) NULL,started_at DATETIME NOT NULL,last_seen_at DATETIME NOT NULL,landing_url TEXT NULL,landing_path VARCHAR(1024) NULL,referrer TEXT NULL,referrer_domain VARCHAR(255) NULL,source VARCHAR(80) NULL,country VARCHAR(100) NULL,country_code CHAR(2) NULL,device_type VARCHAR(32) NULL,locale VARCHAR(32) NULL,utm_source VARCHAR(255) NULL,utm_medium VARCHAR(255) NULL,utm_campaign VARCHAR(255) NULL,is_bot TINYINT(1) NOT NULL DEFAULT 0,UNIQUE KEY uq_site_session(site_id,session_key),INDEX(site_id,visitor_hash,last_seen_at),INDEX(site_id,ip_address,last_seen_at),INDEX idx_session_dimensions(site_id,started_at,source,device_type,country_code),FOREIGN KEY(site_id) REFERENCES sites(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS analytics_events (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,site_id BIGINT UNSIGNED NOT NULL,session_id BIGINT UNSIGNED NULL,visitor_hash CHAR(64) NOT NULL,event_type VARCHAR(64) NOT NULL DEFAULT 'page_view',page_url TEXT NULL,page_path VARCHAR(1024) NULL,page_title VARCHAR(500) NULL,referrer TEXT NULL,properties JSON NULL,is_bot TINYINT(1) NOT NULL DEFAULT 0,occurred_at DATETIME NOT NULL,received_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,INDEX(site_id,occurred_at),INDEX page_path_idx(site_id,page_path(191)),FOREIGN KEY(site_id) REFERENCES sites(id) ON DELETE CASCADE,FOREIGN KEY(session_id) REFERENCES analytics_sessions(id) ON DELETE SET NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS daily_site_metrics (site_id BIGINT UNSIGNED NOT NULL,metric_date DATE NOT NULL,pv BIGINT UNSIGNED NOT NULL DEFAULT 0,uv BIGINT UNSIGNED NOT NULL DEFAULT 0,sessions BIGINT UNSIGNED NOT NULL DEFAULT 0,bot_events BIGINT UNSIGNED NOT NULL DEFAULT 0,data_as_of DATETIME NOT NULL,definition_version VARCHAR(16) NOT NULL DEFAULT '1.0',PRIMARY KEY(site_id,metric_date),FOREIGN KEY(site_id) REFERENCES sites(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS daily_site_metric_dimensions (site_id BIGINT UNSIGNED NOT NULL,metric_date DATE NOT NULL,dimension_type VARCHAR(32) NOT NULL,dimension_value VARCHAR(255) NOT NULL,pv BIGINT UNSIGNED NOT NULL DEFAULT 0,uv BIGINT UNSIGNED NOT NULL DEFAULT 0,sessions BIGINT UNSIGNED NOT NULL DEFAULT 0,bot_events BIGINT UNSIGNED NOT NULL DEFAULT 0,data_as_of DATETIME NOT NULL,definition_version VARCHAR(16) NOT NULL DEFAULT '1.1',PRIMARY KEY(site_id,metric_date,dimension_type,dimension_value),INDEX idx_metric_dimension(site_id,dimension_type,metric_date),FOREIGN KEY(site_id) REFERENCES sites(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS api_clients (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,name VARCHAR(160) NOT NULL,token_hash CHAR(64) NOT NULL UNIQUE,site_id BIGINT UNSIGNED NULL,audience VARCHAR(160) NOT NULL DEFAULT 'sanqi-central-readonly',scopes JSON NOT NULL,allowed_ips JSON NULL,expires_at DATETIME NULL,is_active TINYINT(1) NOT NULL DEFAULT 1,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,FOREIGN KEY(site_id) REFERENCES sites(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS integration_audit_logs (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,client_id BIGINT UNSIGNED NULL,site_id BIGINT UNSIGNED NULL,request_id CHAR(32) NOT NULL,endpoint VARCHAR(120) NOT NULL,method VARCHAR(10) NOT NULL,ip_address VARCHAR(45) NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,INDEX idx_integration_audit(client_id,created_at),FOREIGN KEY(client_id) REFERENCES api_clients(id) ON DELETE SET NULL,FOREIGN KEY(site_id) REFERENCES sites(id) ON DELETE SET NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS audit_logs (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,user_id BIGINT UNSIGNED NULL,action VARCHAR(100) NOT NULL,target_type VARCHAR(80) NULL,target_id VARCHAR(80) NULL,detail JSON NULL,ip_address VARCHAR(45) NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,INDEX(created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+INSERT IGNORE INTO organizations(id,name,code) VALUES(1,'三奇集团','sanqi-group');
+INSERT IGNORE INTO sites(id,organization_id,name,code,domain,category,public_site_key) VALUES (1,1,'三奇海外独立站','sanqi-overseas','www.sanqi.cn','overseas',SHA1('sanqi-overseas-site-key')),(2,1,'三奇国内官网','sanqi-china','www.sanqicn.com','china',SHA1('sanqi-china-site-key'));
+INSERT IGNORE INTO site_domains(site_id,domain,is_primary) VALUES(1,'www.sanqi.cn',1),(2,'www.sanqicn.com',1);
+INSERT IGNORE INTO roles(id,code,name,permissions,is_system) VALUES(1,'super_admin','超级管理员',JSON_ARRAY('*'),1),(2,'site_admin','网站管理员',JSON_ARRAY('inquiries.view','inquiries.update','analytics.view'),1),(3,'analyst','数据分析员',JSON_ARRAY('analytics.view'),1),(4,'auditor','审计员',JSON_ARRAY('audit.view'),1);
+INSERT IGNORE INTO users(id,username,password,role,role_id,real_name) VALUES(1,'admin','$2y$10$Cbqllt5LGnBJfNEKJL6yLOdSWpv85Ar7lkAhHgn65WcG0NWIq6m.a','admin',1,'系统管理员');

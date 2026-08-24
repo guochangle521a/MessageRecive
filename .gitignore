@@ -3,9 +3,18 @@
 /data/*.db
 /data/*.db-*
 /data/logs/*.log
+/data/mysql/
+/data/mysql-*.log
+/data/geoip/*.gz
+/data/geoip/*.bin
+/runtime/
 
 # Local temporary files
 /_codex_*.php
+/_codex_*
+/deploy-backups/
+/tmp*.docx
+/*.docx
 /'test'])
 
 # OS/editor noise
@@ -13,3 +22,6 @@
 Thumbs.db
 *.tmp
 *.bak
+config/local.php
+.env
+.env.*

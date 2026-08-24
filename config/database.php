@@ -1,23 +1,20 @@
 <?php
-/**
- * 数据库配置文件
- * SQLite 单文件数据库
- */
-
-define('DB_PATH', __DIR__ . '/../data/messages.db');
-define('DB_DSN', 'sqlite:' . DB_PATH);
-
-// 时区
+/** MySQL 与平台基础配置。生产环境请通过环境变量注入，不要提交真实密钥。 */
+$local = file_exists(__DIR__.'/local.php') ? require __DIR__.'/local.php' : [];
+define('DB_HOST', getenv('SANQI_DB_HOST') ?: ($local['host'] ?? '127.0.0.1'));
+define('DB_PORT', getenv('SANQI_DB_PORT') ?: ($local['port'] ?? '3306'));
+define('DB_NAME', getenv('SANQI_DB_NAME') ?: ($local['name'] ?? 'sanqi_data_platform'));
+define('DB_USER', getenv('SANQI_DB_USER') ?: ($local['user'] ?? 'sanqi_app'));
+define('DB_PASS', getenv('SANQI_DB_PASS') ?: ($local['pass'] ?? ''));
+define('DB_DSN', 'mysql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME . ';charset=utf8mb4');
+define('VISITOR_HASH_SECRET', getenv('SANQI_VISITOR_SECRET') ?: ($local['visitor_secret'] ?? 'change-this-in-production'));
 date_default_timezone_set('Asia/Shanghai');
-
-// Session 安全配置
 ini_set('session.cookie_httponly', 1);
 ini_set('session.use_only_cookies', 1);
-
-// 频率限制
-define('RATE_LIMIT_MAX', 10);      // 每分钟最大请求数
-define('RATE_LIMIT_WINDOW', 60);   // 窗口时间（秒）
-define('DUPLICATE_WINDOW', 60);    // 同IP同手机号防重复窗口（秒）
-
-// CORS 允许的域名（多个用逗号分隔）
-define('CORS_ORIGINS', '*');
+define('RATE_LIMIT_MAX', 10);
+define('RATE_LIMIT_WINDOW', 60);
+define('DUPLICATE_WINDOW', 60);
+define('TRACK_RATE_LIMIT_MAX', 120);
+define('TRACK_SESSION_TIMEOUT', 180);
+define('RAW_EVENT_RETENTION_DAYS', 90);
+define('CORS_ORIGINS', getenv('SANQI_CORS_ORIGINS') ?: '*');

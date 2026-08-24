@@ -16,7 +16,7 @@ Response::handleCors();
 
 Database::getInstance()->initTables();
 
-$user = Auth::requireAdmin();
+$user = Auth::requireLogin();
 $db   = Database::getInstance();
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -28,6 +28,7 @@ if ($method === 'GET') {
 
 // --- POST: 新增状态 ---
 if ($method === 'POST') {
+    Auth::requireAdmin();
     $input = json_decode(file_get_contents('php://input'), true);
     $name  = trim($input['name'] ?? '');
     $color = trim($input['color'] ?? '#e8710a');
@@ -53,6 +54,7 @@ if ($method === 'POST') {
 
 // --- PUT: 编辑状态 ---
 if ($method === 'PUT') {
+    Auth::requireAdmin();
     $input = json_decode(file_get_contents('php://input'), true);
     $code  = intval($input['code'] ?? -1);
     $name  = trim($input['name'] ?? '');
@@ -74,6 +76,7 @@ if ($method === 'PUT') {
 
 // --- DELETE: 删除状态（软删：禁用） ---
 if ($method === 'DELETE') {
+    Auth::requireAdmin();
     $input = json_decode(file_get_contents('php://input'), true);
     $code  = intval($input['code'] ?? $_GET['code'] ?? -1);
 

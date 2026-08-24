@@ -186,7 +186,7 @@ if ($method === 'PUT') {
     }
 
     if (!empty($updates)) {
-        $updates[] = 'handled_at = datetime(\'now\',\'localtime\')';
+        $updates[] = 'handled_at = UTC_TIMESTAMP()';
         $updates[] = 'handled_by = :hb';
         $updateParams[':hb'] = $user['real_name'] ?? $user['username'];
 
@@ -232,6 +232,13 @@ if ($method === 'POST') {
         $params[$key] = $idValue;
         $scopeParams[$key] = $idValue;
     }
+    if (isset($input['validity_status'])) {
+        $validity=(string)$input['validity_status'];
+        if(!in_array($validity,['pending','valid','spam'],true)) Response::error(400,'询盘判断状态无效');
+        $updates[]='validity_status=:validity'; $updates[]='validity_decided_at=UTC_TIMESTAMP()'; $updates[]='validity_decided_by=:validity_by';
+        $updateParams[':validity']=$validity; $updateParams[':validity_by']=$user['id'];
+    }
+    if (isset($input['validity_note'])) { $updates[]='validity_note=:validity_note'; $updateParams[':validity_note']=trim((string)$input['validity_note']); }
     $allowedSources = Auth::getUserSources($user);
     if ($allowedSources !== null) {
         if (empty($allowedSources)) {
@@ -258,7 +265,7 @@ if ($method === 'POST') {
     }
 
     $db->execute(
-        "UPDATE messages SET status = :st, handled_at = datetime('now','localtime'), handled_by = :hb WHERE id IN (" . implode(',', $placeholders) . ")" . $permissionSQL,
+        "UPDATE messages SET status = :st, handled_at = UTC_TIMESTAMP(), handled_by = :hb WHERE id IN (" . implode(',', $placeholders) . ")" . $permissionSQL,
         $params
     );
 
