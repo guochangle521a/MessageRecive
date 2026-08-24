@@ -1,4 +1,5 @@
 <?php
+if(PHP_SAPI!=='cli'){http_response_code(404);exit;}
 $input=$argv[1]??(__DIR__.'/../data/geoip/dbip-country-lite-'.gmdate('Y-m').'.csv.gz');
 $outDir=$argv[2]??(__DIR__.'/../data/geoip');
 if(!is_file($input)){fwrite(STDERR,"GeoIP CSV gzip not found: $input\n");exit(1);}if(!is_dir($outDir)&&!mkdir($outDir,0755,true)){fwrite(STDERR,"Cannot create output directory\n");exit(1);}

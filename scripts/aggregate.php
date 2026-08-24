@@ -1,4 +1,5 @@
 <?php
+if(PHP_SAPI!=='cli'){http_response_code(404);exit;}
 require_once __DIR__.'/../config/database.php'; require_once __DIR__.'/../src/Database.php';
 $db=Database::getInstance(); $db->initTables();
 $from=$argv[1]??gmdate('Y-m-d',time()-2*86400); $to=$argv[2]??gmdate('Y-m-d');
