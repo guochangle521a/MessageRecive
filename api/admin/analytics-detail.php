@@ -27,11 +27,11 @@ if($mode==='events'){
 }
 
 if($mode==='sessions'){
-    $where=["s.site_id=:sid","s.started_at>=:start","s.started_at<DATE_ADD(:end,INTERVAL 1 DAY)"];$keyword=trim((string)($_GET['keyword']??''));$bot=$_GET['is_bot']??'';
-    if($keyword!==''){$where[]='(s.ip_address LIKE :kw OR s.visitor_hash LIKE :kw OR s.landing_url LIKE :kw OR s.referrer LIKE :kw)';$params[':kw']='%'.$keyword.'%';}
+    $where=["s.site_id=:sid","EXISTS(SELECT 1 FROM analytics_events de WHERE de.session_id=s.id AND de.occurred_at>=:start AND de.occurred_at<DATE_ADD(:end,INTERVAL 1 DAY))"];$keyword=trim((string)($_GET['keyword']??''));$bot=$_GET['is_bot']??'';
+    if($keyword!==''){$where[]='(s.ip_address LIKE :kw OR s.visitor_hash LIKE :kw OR s.landing_url LIKE :kw OR s.referrer LIKE :kw OR EXISTS(SELECT 1 FROM analytics_events ke WHERE ke.session_id=s.id AND (ke.page_path LIKE :kw2 OR ke.page_title LIKE :kw3)))';$params[':kw']='%'.$keyword.'%';$params[':kw2']='%'.$keyword.'%';$params[':kw3']='%'.$keyword.'%';}
     if($bot==='0'||$bot==='1'){$where[]='s.is_bot=:bot';$params[':bot']=(int)$bot;}$w=implode(' AND ',$where);
     $total=$db->queryOne("SELECT COUNT(*) c FROM analytics_sessions s WHERE $w",$params)['c'];
-    $rows=$db->query("SELECT s.*,COUNT(e.id) event_count,COUNT(DISTINCT e.page_path) page_count,TIMESTAMPDIFF(SECOND,s.started_at,s.last_seen_at) duration_seconds FROM analytics_sessions s LEFT JOIN analytics_events e ON e.session_id=s.id WHERE $w GROUP BY s.id ORDER BY s.started_at DESC LIMIT $size OFFSET $offset",$params);
+    $rows=$db->query("SELECT s.*,(SELECT COUNT(*) FROM analytics_events ce WHERE ce.session_id=s.id) event_count,(SELECT COUNT(DISTINCT pe.page_path) FROM analytics_events pe WHERE pe.session_id=s.id AND pe.event_type='page_view') page_count,TIMESTAMPDIFF(SECOND,s.started_at,s.last_seen_at) duration_seconds FROM analytics_sessions s WHERE $w ORDER BY s.started_at DESC LIMIT $size OFFSET $offset",$params);
     paged($rows,$total,$page,$size);
 }
 
@@ -43,8 +43,8 @@ if($mode==='session'){
 }
 
 if($mode==='visitors'){
-    $where=["s.site_id=:sid","s.started_at>=:start","s.started_at<DATE_ADD(:end,INTERVAL 1 DAY)"];$keyword=trim((string)($_GET['keyword']??''));
-    if($keyword!==''){$where[]='(s.ip_address LIKE :kw OR s.visitor_hash LIKE :kw)';$params[':kw']='%'.$keyword.'%';}$w=implode(' AND ',$where);
+    $where=["s.site_id=:sid","EXISTS(SELECT 1 FROM analytics_events de WHERE de.session_id=s.id AND de.occurred_at>=:start AND de.occurred_at<DATE_ADD(:end,INTERVAL 1 DAY))"];$keyword=trim((string)($_GET['keyword']??''));
+    if($keyword!==''){$where[]='(s.ip_address LIKE :kw OR s.visitor_hash LIKE :kw OR EXISTS(SELECT 1 FROM analytics_events ke WHERE ke.session_id=s.id AND (ke.page_path LIKE :kw2 OR ke.page_title LIKE :kw3)))';$params[':kw']='%'.$keyword.'%';$params[':kw2']='%'.$keyword.'%';$params[':kw3']='%'.$keyword.'%';}$w=implode(' AND ',$where);
     $count=$db->queryOne("SELECT COUNT(DISTINCT visitor_hash) c FROM analytics_sessions s WHERE $w",$params)['c'];
     $rows=$db->query("SELECT s.visitor_hash,MAX(s.ip_address) ip_address,MAX(s.masked_ip) masked_ip,MIN(s.started_at) first_seen_at,MAX(s.last_seen_at) last_seen_at,COUNT(DISTINCT s.id) session_count,COUNT(e.id) event_count,COUNT(DISTINCT e.page_path) page_count,MAX(s.device_type) device_type,MAX(s.source) source,MAX(s.is_bot) is_bot FROM analytics_sessions s LEFT JOIN analytics_events e ON e.session_id=s.id WHERE $w GROUP BY s.visitor_hash ORDER BY last_seen_at DESC LIMIT $size OFFSET $offset",$params);
     paged($rows,$count,$page,$size);
@@ -60,7 +60,7 @@ if($mode==='visitor'){
 }
 
 if($mode==='pages'){
-    $where=["e.site_id=:sid","e.is_bot=0","e.occurred_at>=:start","e.occurred_at<DATE_ADD(:end,INTERVAL 1 DAY)"];$keyword=trim((string)($_GET['keyword']??''));
+    $where=["e.site_id=:sid","e.is_bot=0","e.event_type='page_view'","e.occurred_at>=:start","e.occurred_at<DATE_ADD(:end,INTERVAL 1 DAY)"];$keyword=trim((string)($_GET['keyword']??''));
     if($keyword!==''){$where[]='(e.page_path LIKE :kw OR e.page_title LIKE :kw)';$params[':kw']='%'.$keyword.'%';}$w=implode(' AND ',$where);
     $count=$db->queryOne("SELECT COUNT(DISTINCT page_path) c FROM analytics_events e WHERE $w",$params)['c'];
     $rows=$db->query("SELECT e.page_path,MAX(e.page_title) page_title,COUNT(*) pv,COUNT(DISTINCT e.visitor_hash) uv,COUNT(DISTINCT e.session_id) sessions,MIN(e.occurred_at) first_seen_at,MAX(e.occurred_at) last_seen_at FROM analytics_events e WHERE $w GROUP BY e.page_path ORDER BY pv DESC LIMIT $size OFFSET $offset",$params);
@@ -70,11 +70,11 @@ if($mode==='pages'){
 if($mode==='page'){
     $path=(string)($_GET['path']??'');if($path==='') Response::error(400,'页面路径不能为空');
     $p=[':sid'=>$siteId,':path'=>$path,':start'=>$start,':end'=>$end];
-    $summary=$db->queryOne("SELECT page_path,MAX(page_title) page_title,COUNT(*) pv,COUNT(DISTINCT visitor_hash) uv,COUNT(DISTINCT session_id) sessions,MIN(occurred_at) first_seen_at,MAX(occurred_at) last_seen_at FROM analytics_events WHERE site_id=:sid AND is_bot=0 AND page_path=:path AND occurred_at>=:start AND occurred_at<DATE_ADD(:end,INTERVAL 1 DAY) GROUP BY page_path",$p);
+    $summary=$db->queryOne("SELECT page_path,MAX(page_title) page_title,COUNT(*) pv,COUNT(DISTINCT visitor_hash) uv,COUNT(DISTINCT session_id) sessions,MIN(occurred_at) first_seen_at,MAX(occurred_at) last_seen_at FROM analytics_events WHERE site_id=:sid AND is_bot=0 AND event_type='page_view' AND page_path=:path AND occurred_at>=:start AND occurred_at<DATE_ADD(:end,INTERVAL 1 DAY) GROUP BY page_path",$p);
     if(!$summary) Response::error(404,'所选日期内没有该页面数据',404);
-    $daily=$db->query("SELECT DATE(occurred_at) day,COUNT(*) pv,COUNT(DISTINCT visitor_hash) uv FROM analytics_events WHERE site_id=:sid AND is_bot=0 AND page_path=:path AND occurred_at>=:start AND occurred_at<DATE_ADD(:end,INTERVAL 1 DAY) GROUP BY DATE(occurred_at) ORDER BY day",$p);
-    $sources=$db->query("SELECT COALESCE(s.source,'unknown') source,COUNT(*) pv FROM analytics_events e LEFT JOIN analytics_sessions s ON s.id=e.session_id WHERE e.site_id=:sid AND e.is_bot=0 AND e.page_path=:path AND e.occurred_at>=:start AND e.occurred_at<DATE_ADD(:end,INTERVAL 1 DAY) GROUP BY s.source ORDER BY pv DESC",$p);
-    $recent=$db->query("SELECT e.occurred_at,e.visitor_hash,e.session_id,s.ip_address,s.source,s.device_type FROM analytics_events e LEFT JOIN analytics_sessions s ON s.id=e.session_id WHERE e.site_id=:sid AND e.is_bot=0 AND e.page_path=:path AND e.occurred_at>=:start AND e.occurred_at<DATE_ADD(:end,INTERVAL 1 DAY) ORDER BY e.occurred_at DESC LIMIT 50",$p);
+    $daily=$db->query("SELECT DATE(occurred_at) day,COUNT(*) pv,COUNT(DISTINCT visitor_hash) uv FROM analytics_events WHERE site_id=:sid AND is_bot=0 AND event_type='page_view' AND page_path=:path AND occurred_at>=:start AND occurred_at<DATE_ADD(:end,INTERVAL 1 DAY) GROUP BY DATE(occurred_at) ORDER BY day",$p);
+    $sources=$db->query("SELECT COALESCE(s.source,'unknown') source,COUNT(*) pv FROM analytics_events e LEFT JOIN analytics_sessions s ON s.id=e.session_id WHERE e.site_id=:sid AND e.is_bot=0 AND e.event_type='page_view' AND e.page_path=:path AND e.occurred_at>=:start AND e.occurred_at<DATE_ADD(:end,INTERVAL 1 DAY) GROUP BY s.source ORDER BY pv DESC",$p);
+    $recent=$db->query("SELECT e.occurred_at,e.visitor_hash,e.session_id,s.ip_address,s.source,s.device_type FROM analytics_events e LEFT JOIN analytics_sessions s ON s.id=e.session_id WHERE e.site_id=:sid AND e.is_bot=0 AND e.event_type='page_view' AND e.page_path=:path AND e.occurred_at>=:start AND e.occurred_at<DATE_ADD(:end,INTERVAL 1 DAY) ORDER BY e.occurred_at DESC LIMIT 50",$p);
     Response::success(['summary'=>$summary,'daily'=>$daily,'sources'=>$sources,'recent'=>$recent]);
 }
 Response::error(400,'不支持的明细类型');
