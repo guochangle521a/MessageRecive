@@ -17,7 +17,7 @@ function paged($list,$total,$page,$size,$extra=[]){Response::success(array_merge
 if($mode==='events'){
     $where=["e.site_id=:sid","e.occurred_at>=:start","e.occurred_at<DATE_ADD(:end,INTERVAL 1 DAY)"];
     $keyword=trim((string)($_GET['keyword']??'')); $device=trim((string)($_GET['device']??'')); $source=trim((string)($_GET['source']??'')); $bot=$_GET['is_bot']??'';
-    if($keyword!==''){$where[]='(e.page_path LIKE :kw OR e.page_title LIKE :kw OR s.ip_address LIKE :kw OR e.visitor_hash LIKE :kw)';$params[':kw']='%'.$keyword.'%';}
+    if($keyword!==''){$where[]='(e.page_path LIKE :kw_path OR e.page_title LIKE :kw_title OR s.ip_address LIKE :kw_ip OR e.visitor_hash LIKE :kw_visitor)';$like='%'.$keyword.'%';$params[':kw_path']=$like;$params[':kw_title']=$like;$params[':kw_ip']=$like;$params[':kw_visitor']=$like;}
     if(in_array($device,['desktop','mobile','tablet'],true)){$where[]='s.device_type=:device';$params[':device']=$device;}
     if($source!==''){$where[]='s.source=:source';$params[':source']=$source;}
     if($bot==='0'||$bot==='1'){$where[]='e.is_bot=:bot';$params[':bot']=(int)$bot;}
@@ -28,7 +28,7 @@ if($mode==='events'){
 
 if($mode==='sessions'){
     $where=["s.site_id=:sid","EXISTS(SELECT 1 FROM analytics_events de WHERE de.session_id=s.id AND de.occurred_at>=:start AND de.occurred_at<DATE_ADD(:end,INTERVAL 1 DAY))"];$keyword=trim((string)($_GET['keyword']??''));$bot=$_GET['is_bot']??'';
-    if($keyword!==''){$where[]='(s.ip_address LIKE :kw OR s.visitor_hash LIKE :kw OR s.landing_url LIKE :kw OR s.referrer LIKE :kw OR EXISTS(SELECT 1 FROM analytics_events ke WHERE ke.session_id=s.id AND (ke.page_path LIKE :kw2 OR ke.page_title LIKE :kw3)))';$params[':kw']='%'.$keyword.'%';$params[':kw2']='%'.$keyword.'%';$params[':kw3']='%'.$keyword.'%';}
+    if($keyword!==''){$where[]='(s.ip_address LIKE :session_ip OR s.visitor_hash LIKE :session_visitor OR s.landing_url LIKE :session_landing OR s.referrer LIKE :session_referrer OR EXISTS(SELECT 1 FROM analytics_events ke WHERE ke.session_id=s.id AND (ke.page_path LIKE :session_path OR ke.page_title LIKE :session_title)))';$like='%'.$keyword.'%';$params[':session_ip']=$like;$params[':session_visitor']=$like;$params[':session_landing']=$like;$params[':session_referrer']=$like;$params[':session_path']=$like;$params[':session_title']=$like;}
     if($bot==='0'||$bot==='1'){$where[]='s.is_bot=:bot';$params[':bot']=(int)$bot;}$w=implode(' AND ',$where);
     $total=$db->queryOne("SELECT COUNT(*) c FROM analytics_sessions s WHERE $w",$params)['c'];
     $rows=$db->query("SELECT s.*,(SELECT COUNT(*) FROM analytics_events ce WHERE ce.session_id=s.id) event_count,(SELECT COUNT(DISTINCT pe.page_path) FROM analytics_events pe WHERE pe.session_id=s.id AND pe.event_type='page_view') page_count,TIMESTAMPDIFF(SECOND,s.started_at,s.last_seen_at) duration_seconds FROM analytics_sessions s WHERE $w ORDER BY s.started_at DESC LIMIT $size OFFSET $offset",$params);
@@ -44,7 +44,7 @@ if($mode==='session'){
 
 if($mode==='visitors'){
     $where=["s.site_id=:sid","EXISTS(SELECT 1 FROM analytics_events de WHERE de.session_id=s.id AND de.occurred_at>=:start AND de.occurred_at<DATE_ADD(:end,INTERVAL 1 DAY))"];$keyword=trim((string)($_GET['keyword']??''));
-    if($keyword!==''){$where[]='(s.ip_address LIKE :kw OR s.visitor_hash LIKE :kw OR EXISTS(SELECT 1 FROM analytics_events ke WHERE ke.session_id=s.id AND (ke.page_path LIKE :kw2 OR ke.page_title LIKE :kw3)))';$params[':kw']='%'.$keyword.'%';$params[':kw2']='%'.$keyword.'%';$params[':kw3']='%'.$keyword.'%';}$w=implode(' AND ',$where);
+    if($keyword!==''){$where[]='(s.ip_address LIKE :visitor_ip OR s.visitor_hash LIKE :visitor_hash OR EXISTS(SELECT 1 FROM analytics_events ke WHERE ke.session_id=s.id AND (ke.page_path LIKE :visitor_path OR ke.page_title LIKE :visitor_title)))';$like='%'.$keyword.'%';$params[':visitor_ip']=$like;$params[':visitor_hash']=$like;$params[':visitor_path']=$like;$params[':visitor_title']=$like;}$w=implode(' AND ',$where);
     $count=$db->queryOne("SELECT COUNT(DISTINCT visitor_hash) c FROM analytics_sessions s WHERE $w",$params)['c'];
     $rows=$db->query("SELECT s.visitor_hash,MAX(s.ip_address) ip_address,MAX(s.masked_ip) masked_ip,MIN(s.started_at) first_seen_at,MAX(s.last_seen_at) last_seen_at,COUNT(DISTINCT s.id) session_count,COUNT(e.id) event_count,COUNT(DISTINCT e.page_path) page_count,MAX(s.device_type) device_type,MAX(s.source) source,MAX(s.is_bot) is_bot FROM analytics_sessions s LEFT JOIN analytics_events e ON e.session_id=s.id WHERE $w GROUP BY s.visitor_hash ORDER BY last_seen_at DESC LIMIT $size OFFSET $offset",$params);
     paged($rows,$count,$page,$size);
@@ -61,9 +61,9 @@ if($mode==='visitor'){
 
 if($mode==='pages'){
     $where=["e.site_id=:sid","e.is_bot=0","e.event_type='page_view'","e.occurred_at>=:start","e.occurred_at<DATE_ADD(:end,INTERVAL 1 DAY)"];$keyword=trim((string)($_GET['keyword']??''));
-    if($keyword!==''){$where[]='(e.page_path LIKE :kw OR e.page_title LIKE :kw)';$params[':kw']='%'.$keyword.'%';}$w=implode(' AND ',$where);
-    $count=$db->queryOne("SELECT COUNT(DISTINCT page_path) c FROM analytics_events e WHERE $w",$params)['c'];
-    $rows=$db->query("SELECT e.page_path,MAX(e.page_title) page_title,COUNT(*) pv,COUNT(DISTINCT e.visitor_hash) uv,COUNT(DISTINCT e.session_id) sessions,MIN(e.occurred_at) first_seen_at,MAX(e.occurred_at) last_seen_at FROM analytics_events e WHERE $w GROUP BY e.page_path ORDER BY pv DESC LIMIT $size OFFSET $offset",$params);
+    if($keyword!==''){$where[]='(e.page_path LIKE :page_path OR e.page_title LIKE :page_title OR s.ip_address LIKE :page_ip OR e.visitor_hash LIKE :page_visitor)';$like='%'.$keyword.'%';$params[':page_path']=$like;$params[':page_title']=$like;$params[':page_ip']=$like;$params[':page_visitor']=$like;}$w=implode(' AND ',$where);
+    $count=$db->queryOne("SELECT COUNT(DISTINCT e.page_path) c FROM analytics_events e LEFT JOIN analytics_sessions s ON s.id=e.session_id WHERE $w",$params)['c'];
+    $rows=$db->query("SELECT e.page_path,MAX(e.page_title) page_title,COUNT(*) pv,COUNT(DISTINCT e.visitor_hash) uv,COUNT(DISTINCT e.session_id) sessions,MIN(e.occurred_at) first_seen_at,MAX(e.occurred_at) last_seen_at FROM analytics_events e LEFT JOIN analytics_sessions s ON s.id=e.session_id WHERE $w GROUP BY e.page_path ORDER BY pv DESC LIMIT $size OFFSET $offset",$params);
     paged($rows,$count,$page,$size);
 }
 
