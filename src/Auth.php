@@ -39,10 +39,10 @@ class Auth {
 
         // 生成 Token
         $token = bin2hex(random_bytes(32));
-        $expiresAt = date('Y-m-d H:i:s', time() + self::TOKEN_EXPIRE_HOURS * 3600);
+        $expiresAt = gmdate('Y-m-d H:i:s', time() + self::TOKEN_EXPIRE_HOURS * 3600);
 
         // 清理过期会话
-        $db->execute("DELETE FROM sessions WHERE expires_at < datetime('now','localtime')");
+        $db->execute('DELETE FROM sessions WHERE expires_at < UTC_TIMESTAMP()');
 
         // 删除该用户旧会话（单点登录）
         $db->execute('DELETE FROM sessions WHERE user_id = :uid', [
@@ -70,6 +70,7 @@ class Auth {
                 'username'  => $user['username'],
                 'role'      => $user['role'],
                 'real_name' => $user['real_name']
+                ,'can_view_china' => intval($user['can_view_china'] ?? 0)
             ]
         ];
     }
@@ -104,10 +105,10 @@ class Auth {
             $token = trim($m[1]);
             $db = Database::getInstance();
             $session = $db->queryOne(
-                "SELECT s.*, u.id as uid, u.username, u.role, u.real_name, u.is_active
+                "SELECT s.*, u.id as uid, u.username, u.role, u.real_name, u.is_active, u.can_view_china
                  FROM sessions s
                  JOIN users u ON u.id = s.user_id
-                 WHERE s.token = :t AND s.expires_at > datetime('now','localtime')",
+                 WHERE s.token = :t AND s.expires_at > UTC_TIMESTAMP()",
                 [':t' => $token]
             );
             if ($session && $session['is_active']) {
@@ -116,6 +117,7 @@ class Auth {
                     'username'  => $session['username'],
                     'role'      => $session['role'],
                     'real_name' => $session['real_name']
+                    ,'can_view_china' => intval($session['can_view_china'] ?? 0)
                 ];
             }
         }
@@ -168,6 +170,25 @@ class Auth {
             [':uid' => $user['id']]
         );
         return array_column($rows, 'source');
+    }
+
+    public static function canViewChina($user)
+    {
+        return $user['role'] === 'admin' || !empty($user['can_view_china']);
+    }
+
+    public static function getUserSiteIds($user)
+    {
+        if ($user['role'] === 'admin') return null;
+        return array_map('intval', array_column(Database::getInstance()->query(
+            'SELECT site_id FROM user_sites WHERE user_id=:uid', [':uid'=>$user['id']]
+        ), 'site_id'));
+    }
+
+    public static function canAccessSite($user, $siteId)
+    {
+        $ids = self::getUserSiteIds($user);
+        return $ids === null || in_array((int)$siteId, $ids, true);
     }
 
     /**

@@ -15,6 +15,8 @@ $user = Auth::requireLogin();
 $db = Database::getInstance();
 
 $source = trim($_GET['source'] ?? '');
+$type = trim($_GET['type'] ?? '');
+$keyword = trim($_GET['keyword'] ?? '');
 $status = $_GET['status'] ?? '';
 $dateFrom = $_GET['date_from'] ?? '';
 $dateTo   = $_GET['date_to'] ?? '';
@@ -28,6 +30,11 @@ $params = [];
 if ($source !== '') {
     $where[] = 'm.source = :src';
     $params[':src'] = $source;
+}
+if ($type !== '') { $where[] = 'm.type = :type'; $params[':type'] = $type; }
+if ($keyword !== '') {
+    $where[] = '(m.name LIKE :kw OR m.phone LIKE :kw OR m.email LIKE :kw OR m.company LIKE :kw OR m.remark LIKE :kw OR m.extra_data LIKE :kw)';
+    $params[':kw'] = '%' . $keyword . '%';
 }
 if ($status !== '') {
     $where[] = 'm.status = :st';
@@ -78,15 +85,20 @@ echo "\xEF\xBB\xBF";
 $out = fopen('php://output', 'w');
 
 // 表头
-fputcsv($out, ['ID', '姓名', '手机号', '邮箱', '留言内容', '来源', '状态', '处理记录', '处理人', '提交时间', '处理时间', '操作人']);
+fputcsv($out, ['ID', '业务类型', '姓名', '电话', '邮箱', '公司/组织', '国家/地区', '详细内容', '扩展字段(JSON)', '提交页面', '来源', '状态', '处理记录', '处理人', '提交时间', '处理时间', '操作人']);
 
 foreach ($data as $row) {
     fputcsv($out, [
         $row['id'],
+        $row['type'] ?? '',
         $row['name'],
         $row['phone'],
         $row['email'] ?? '',
+        $row['company'] ?? '',
+        $row['country'] ?? '',
         $row['remark'] ?? '',
+        $row['extra_data'] ?? '',
+        $row['source_url'] ?? '',
         $row['source'],
         $row['status_name'] ?? $row['status'],
         $row['handle_record'] ?? '',

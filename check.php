@@ -25,8 +25,8 @@ echo '<p class="sub">检查系统运行环境和数据库状态</p>';
 echo '<div class="row"><span class="label">PHP 版本</span><span class="val ' . (version_compare(PHP_VERSION, '7.4', '>=') ? 'ok' : 'err') . '">' . PHP_VERSION . (version_compare(PHP_VERSION, '7.4', '>=') ? ' &#x2705;' : ' &#x274C; (需要 >= 7.4)') . '</span></div>';
 
 // ===== 2. PDO 扩展 =====
-$hasPdo = extension_loaded('pdo') && extension_loaded('pdo_sqlite');
-echo '<div class="row"><span class="label">PDO SQLite 扩展</span><span class="val ' . ($hasPdo ? 'ok' : 'err') . '">' . ($hasPdo ? '已安装 &#x2705;' : '未安装 &#x274C;') . '</span></div>';
+$hasPdo = extension_loaded('pdo') && extension_loaded('pdo_mysql');
+echo '<div class="row"><span class="label">PDO MySQL 扩展</span><span class="val ' . ($hasPdo ? 'ok' : 'err') . '">' . ($hasPdo ? '已安装 &#x2705;' : '未安装 &#x274C;') . '</span></div>';
 
 // ===== 3. JSON 扩展 =====
 echo '<div class="row"><span class="label">JSON 扩展</span><span class="val ' . (extension_loaded('json') ? 'ok' : 'err') . '">' . (extension_loaded('json') ? '已安装 &#x2705;' : '未安装 &#x274C;') . '</span></div>';
@@ -47,7 +47,7 @@ try {
     echo '<div class="row"><span class="label">数据库初始化</span><span class="val ok">成功 &#x2705;</span></div>';
 
     // 检查表
-    $tables = ['messages', 'api_keys', 'status_dict', 'users', 'user_sources', 'sessions', 'rate_limits'];
+    $tables = ['organizations','sites','messages','china_website_messages','analytics_events','daily_site_metrics','api_keys','users','roles','user_sites','sessions'];
     foreach ($tables as $t) {
         try {
             $cnt = $db->getPdo()->query("SELECT COUNT(*) FROM $t")->fetchColumn();
@@ -71,7 +71,7 @@ try {
 
 // ===== 7. API Key =====
 try {
-    $keys = $db->query("SELECT site_name, api_key, substr(api_key, 1, 6) || '****' || substr(api_key, -4) as masked_key FROM api_keys WHERE is_active = 1");
+    $keys = $db->query("SELECT site_name,api_key,CONCAT(SUBSTRING(api_key,1,6),'****',RIGHT(api_key,4)) masked_key FROM api_keys WHERE is_active=1");
     echo '<div class="row"><span class="label">API Keys</span><span class="val ok">' . count($keys) . ' 个 &#x2705;</span></div>';
     foreach ($keys as $k) {
         echo '<div class="row"><span class="label">&nbsp;&nbsp;' . htmlspecialchars($k['site_name']) . '</span><span class="val" style="font-size:11px;">' . htmlspecialchars($k['masked_key']) . '</span></div>';
@@ -85,7 +85,7 @@ echo '<div class="row"><span class="label">API 自检</span>';
 if (empty($keys)) {
     echo '<span class="val">未创建 API Key，跳过自检</span></div>';
 } else {
-    $ch = curl_init((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . dirname($_SERVER['SCRIPT_NAME']) . '/api/message.php');
+    $ch = curl_init((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . dirname($_SERVER['SCRIPT_NAME']) . '/api/business-inquiry.php');
     curl_setopt_array($ch, [
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => json_encode(['api_key' => $keys[0]['api_key'], 'name' => 'Check', 'phone' => '13800000000']),
@@ -116,7 +116,7 @@ echo '<div style="margin-top:24px;padding:16px;background:#f8fafc;border-radius:
 echo '<strong style="font-size:14px;">&#x1F4A1; 使用提示：</strong><br><br>';
 echo '1. 登录地址: <code>' . dirname($_SERVER['SCRIPT_NAME']) . '/admin/login.html</code><br>';
 echo '2. 管理员账号: <code>admin</code>（请使用部署时设置的强密码，并在首次登录后修改）<br>';
-echo '3. API 地址: <code>' . dirname($_SERVER['SCRIPT_NAME']) . '/api/message.php</code><br>';
+echo '3. API 地址示例: <code>' . dirname($_SERVER['SCRIPT_NAME']) . '/api/business-inquiry.php</code><br>';
 echo '</div>';
 
 echo '</div></body></html>';

@@ -16,6 +16,7 @@ $user = Auth::requireLogin();
 $db = Database::getInstance();
 
 $source = trim($_GET['source'] ?? '');
+$type = trim($_GET['type'] ?? '');
 $status = $_GET['status'] ?? '';
 $dateFrom = trim($_GET['date_from'] ?? '');
 $dateTo = trim($_GET['date_to'] ?? '');
@@ -36,6 +37,10 @@ $params = [
 if ($source !== '') {
     $where[] = 'm.source = :src';
     $params[':src'] = $source;
+}
+if ($type !== '') {
+    $where[] = 'm.type = :type';
+    $params[':type'] = $type;
 }
 if ($status !== '') {
     $where[] = 'm.status = :st';

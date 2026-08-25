@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>网站管理</title><link rel="stylesheet" href="assets/style.css"></head>
+<body><div class="layout">
+<aside class="sidebar" id="sidebar"><div class="sidebar-header"><div class="logo">&#x1F310;</div><div><h2>三奇数据平台</h2><span id="sidebarUserRole"></span></div></div><nav class="sidebar-nav" id="sidebarNav"></nav></aside>
+<main class="main-content"><header class="topbar"><div class="topbar-left"><button class="menu-toggle" onclick="toggleSidebar()">&#9776;</button><h3>组织与网站管理</h3></div><div class="topbar-right"><span id="topUsername"></span><button class="btn-logout" onclick="doLogout()">退出</button></div></header>
+<div class="page-content">
+  <div class="panel"><div class="panel-header"><h4>三奇集团网站</h4><button class="btn btn-primary btn-sm" type="button" onclick="openSiteCreate()">＋ 新建网站</button></div><div class="panel-body no-padding"><table><thead><tr><th>ID</th><th>名称</th><th>主域名</th><th>类别</th><th>公开采集 Key</th><th>状态</th><th>统计接入</th></tr></thead><tbody id="siteRows"></tbody></table></div></div>
+  <div class="panel"><div class="panel-body"><p style="margin:0;color:#667085">统计代码与网站绑定。点击“接入代码”即可复制该网站专用的 tracker.js 代码，放在网站公共页脚的 <code>&lt;/body&gt;</code> 前。</p></div></div>
+</div></main></div>
+<div class="modal-overlay" id="siteCreateModal" style="display:none"><div class="modal" style="width:580px"><div class="modal-header"><h3>新建网站</h3><button class="modal-close" onclick="closeSiteCreate()">&times;</button></div><div class="modal-body"><div class="detail-grid">
+  <div class="detail-item full"><div class="detail-label">网站名称 *</div><input id="newSiteName" maxlength="160" placeholder="例如：三奇欧洲官网" style="width:100%;padding:9px"></div>
+  <div class="detail-item"><div class="detail-label">网站代码 *</div><input id="newSiteCode" maxlength="64" placeholder="例如：sanqi-europe" style="width:100%;padding:9px"></div>
+  <div class="detail-item"><div class="detail-label">网站类别 *</div><select id="newSiteCategory" style="width:100%;padding:9px"><option value="overseas">海外网站</option><option value="china">国内网站</option><option value="other">其他网站</option></select></div>
+  <div class="detail-item full"><div class="detail-label">主域名 *</div><input id="newSiteDomain" maxlength="255" placeholder="例如：www.example.com（不要带 https:// 和路径）" style="width:100%;padding:9px"></div>
+</div></div><div class="modal-footer"><button class="btn btn-primary" id="createSiteButton" onclick="createSite()">创建并生成接入代码</button><button class="btn btn-outline" onclick="closeSiteCreate()">取消</button></div></div></div>
+<div class="modal-overlay" id="trackerCodeModal" style="display:none"><div class="modal" style="width:760px"><div class="modal-header"><h3 id="trackerCodeTitle">网站统计接入代码</h3><button class="modal-close" onclick="closeTrackerCode()">&times;</button></div><div class="modal-body">
+  <p style="margin-top:0;color:#667085">把下面代码放入该网站公共页脚模板的 <code>&lt;/body&gt;</code> 前。所有页面只需统一加入一次。</p>
+  <textarea id="trackerCodeText" readonly style="width:100%;min-height:130px;padding:14px;font-family:Consolas,monospace;line-height:1.6"></textarea><div id="trackerCopyStatus" style="margin-top:8px;color:#667085"></div>
+</div><div class="modal-footer"><button class="btn btn-primary" onclick="copyTrackerCode()">复制接入代码</button><button class="btn btn-outline" onclick="closeTrackerCode()">关闭</button></div></div></div>
+<div class="toast-container" id="toastContainer"></div><script src="assets/app.js?v=20260824-public-port"></script></body></html>

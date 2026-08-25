@@ -48,6 +48,7 @@ if ($method === 'GET') {
     $pageSize = max(1, min(100, intval($_GET['page_size'] ?? 20)));
     $keyword  = trim($_GET['keyword'] ?? '');
     $source   = trim($_GET['source'] ?? '');
+    $type     = trim($_GET['type'] ?? '');
     $status   = $_GET['status'] ?? '';
     $handler  = trim($_GET['handler'] ?? '');
     $dateFrom = $_GET['date_from'] ?? '';
@@ -62,17 +63,20 @@ if ($method === 'GET') {
     $params = [];
 
     if ($keyword !== '') {
-        $where[] = '(m.name LIKE :kw OR m.phone LIKE :kw2 OR m.email LIKE :kw3 OR m.remark LIKE :kw4 OR m.handler LIKE :kw5)';
+        $where[] = '(m.name LIKE :kw OR m.phone LIKE :kw2 OR m.email LIKE :kw3 OR m.company LIKE :kw4 OR m.remark LIKE :kw5 OR m.extra_data LIKE :kw6 OR m.handler LIKE :kw7)';
         $kw = '%' . $keyword . '%';
         $params[':kw'] = $kw;
         $params[':kw2'] = $kw;
         $params[':kw3'] = $kw;
-        $params[':kw4'] = $kw;
-        $params[':kw5'] = $kw;
+        $params[':kw4'] = $kw; $params[':kw5'] = $kw; $params[':kw6'] = $kw; $params[':kw7'] = $kw;
     }
     if ($source !== '') {
         $where[] = 'm.source = :src';
         $params[':src'] = $source;
+    }
+    if ($type !== '') {
+        $where[] = 'm.type = :type';
+        $params[':type'] = $type;
     }
     if ($status !== '') {
         $where[] = 'm.status = :st';
@@ -182,7 +186,7 @@ if ($method === 'PUT') {
     }
 
     if (!empty($updates)) {
-        $updates[] = 'handled_at = datetime(\'now\',\'localtime\')';
+        $updates[] = 'handled_at = UTC_TIMESTAMP()';
         $updates[] = 'handled_by = :hb';
         $updateParams[':hb'] = $user['real_name'] ?? $user['username'];
 
@@ -228,7 +232,13 @@ if ($method === 'POST') {
         $params[$key] = $idValue;
         $scopeParams[$key] = $idValue;
     }
-
+    if (isset($input['validity_status'])) {
+        $validity=(string)$input['validity_status'];
+        if(!in_array($validity,['pending','valid','spam'],true)) Response::error(400,'询盘判断状态无效');
+        $updates[]='validity_status=:validity'; $updates[]='validity_decided_at=UTC_TIMESTAMP()'; $updates[]='validity_decided_by=:validity_by';
+        $updateParams[':validity']=$validity; $updateParams[':validity_by']=$user['id'];
+    }
+    if (isset($input['validity_note'])) { $updates[]='validity_note=:validity_note'; $updateParams[':validity_note']=trim((string)$input['validity_note']); }
     $allowedSources = Auth::getUserSources($user);
     if ($allowedSources !== null) {
         if (empty($allowedSources)) {
@@ -255,7 +265,7 @@ if ($method === 'POST') {
     }
 
     $db->execute(
-        "UPDATE messages SET status = :st, handled_at = datetime('now','localtime'), handled_by = :hb WHERE id IN (" . implode(',', $placeholders) . ")" . $permissionSQL,
+        "UPDATE messages SET status = :st, handled_at = UTC_TIMESTAMP(), handled_by = :hb WHERE id IN (" . implode(',', $placeholders) . ")" . $permissionSQL,
         $params
     );
 
