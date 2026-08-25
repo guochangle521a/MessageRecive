@@ -59,7 +59,7 @@ php /网站目录/scripts/aggregate.php
 
 业务接口使用独立 Bearer Token，可限制网站、权限、出口 IP 和到期时间，不复用表单 API Key。接口只返回聚合数据，不返回姓名、电话、邮箱、留言正文、完整 IP 或 Cookie。
 
-V1.1 统一响应增加 `traceId`、`serviceVersion`、`sourceSiteId`、`freshnessSlaSeconds` 和对规范化 `data` 计算的 `sourceDigest`。稳定站点标识为 `sanqi-overseas`。当前正式服务继续使用端口 `38038`，不提供 443 入口。
+V1.1 统一响应增加 `traceId`、`serviceVersion`、`sourceSiteId`、`freshnessSlaSeconds` 和对规范化 `data` 计算的 `sourceDigest`。只读接口根据 Bearer Token 绑定站点自动返回稳定标识：海外站为 `sanqi-overseas`，国内站为 `sanqi-china`。当前正式服务继续使用端口 `38038`，不提供 443 入口。
 
 ### 调用准备
 
